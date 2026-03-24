@@ -502,7 +502,7 @@ begin
         begin
           if(shopfloor.AR_free) then  //AR is free
           begin
-            Part_Position_AR := GET_AR_Position(Part_Type, WAREHOUSE_Parts);
+            Part_Position_AR := GET_AR_Position(Part_Type, WAREHOUSE_Parts); //aqui a parttype é a que quero produzir, por isso nao posso ir ao armazem buscar isto, tenho q fazer contas
             Memo1.Append(IntToStr(Part_Position_AR));
 
             if( Part_Position_AR > 0 ) then
@@ -531,14 +531,14 @@ begin
         Stage_Clear_Pos_AR :
         begin
           SET_AR_Position(Part_Position_AR, 0, WAREHOUSE_Parts);
-          current_operation :=  Stage_Finished;
+          current_operation :=  Stage_Production;      //mudei isto
         end;
 
         //Send a part to production
         Stage_Production:
         begin
-          if (task.Part_Type = 4) or (task.Part_Type = 5) or task.Part_Type = 6) then
-          begin      //Send raw material to Cell 1 or 2 depending on producing Lid or Base
+          if (task.Part_Type = 4) or (task.Part_Type = 5) or task.Part_Type = 6) then       //mudar o numero para parttype
+          begin      //Send raw material to Cell 1 or 2 depending on producing Base or Lid
             Memo1.Append('Producing Base')
             r := M_Do_Production(1);
           end
