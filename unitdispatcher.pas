@@ -502,8 +502,12 @@ begin
         begin
           if(shopfloor.AR_free) then  //AR is free
           begin
-            Part_Position_AR := GET_AR_Position(Part_Type, WAREHOUSE_Parts); //aqui a parttype é a que quero produzir, por isso nao posso ir ao armazem buscar isto, tenho q fazer contas
-            Memo1.Append(IntToStr(Part_Position_AR));
+            if Part_Destination = 1 then
+            Part_Position_AR := GET_AR_Position(Part_Type - 3, WAREHOUSE_Parts);
+            Memo1.Append('Getting Part from Position' + IntToStr(Part_Position_AR));
+            else
+            Part_Position_AR := GET_AR_Position(Part_Type - 6, WAREHOUSE_Parts); //Raw Part to Get
+            Memo1.Append('Getting Part from Position' + IntToStr(Part_Position_AR));
 
             if( Part_Position_AR > 0 ) then
             begin
@@ -537,18 +541,59 @@ begin
         //Send a part to production
         Stage_Production:
         begin
-          if (task.Part_Type = 4) or (task.Part_Type = 5) or task.Part_Type = 6) then       //mudar o numero para parttype  e usar task.part_destination (var global)
-          begin      //Send raw material to Cell 1 or 2 depending on producing Base or Lid
+          //if (task.Part_Type = 4) or (task.Part_Type = 5) or task.Part_Type = 6) then       //mudar o numero para parttype  e usar task.part_destination (var global)
+          //begin      //Send raw material to Cell 1 or 2 depending on producing Base or Lid
+          //  Memo1.Append('Producing Base')
+          // r := M_Do_Production(1);
+          //end
+          //else if (task.Part_Type = 7) or (task.Part_Type = 8) or task.Part_Type = 9) then
+          // begin
+          //  Memo1.Append('Producing Lid')
+           // r := M_Do_Production(2);
+         // end
+         if Part_Destination = 1 then
             Memo1.Append('Producing Base')
-            r := M_Do_Production(1);
-          end
-          else if (task.Part_Type = 7) or (task.Part_Type = 8) or task.Part_Type = 9) then
-           begin
-            Memo1.Append('Producing Lid')
-            r := M_Do_Production(2);
-          end
+         else
+             Memo1.Append('Producing Lid');
+
+         r := M_Do_Production(Part_Destination);
+
           if ( r = 1 ) then                                 //sucess
-             current_operation :=  Stage_Load;
+             current_operation :=  Stage_GetPosition;
+        end;
+
+        // Getting a Free Position from the Warehouse
+        Stage_GetPosition :
+        begin
+          if(shopfloor.AR_free) then  //AR is free
+          begin
+            Part_Position_AR := GET_AR_Position(0, WAREHOUSE_Parts);
+            if( Part_Position_AR > 0 ) then
+            begin
+               current_operation :=  Stage_Load;
+            end
+            else
+            begin
+               current_operation :=  Stage_GetPosition;
+            end;
+          end;
+        end;
+
+        // Request to Load that part
+        Stage_Load :
+        begin
+          Memo1.Append('AR Loading to Position: ' + IntToStr(Part_Position_AR));
+          r := M_Load(Part_Position_AR);
+
+          if ( r = 1 ) then                                 //sucess
+             current_operation :=  Stage_Update_Pos_AR;
+        end;
+
+        //Update the Position in the AR
+        Stage_Update_Pos_AR :
+        begin
+          SET_AR_Position(Part_Position_AR, Part_Type, WAREHOUSE_Parts);    //is this right?
+          current_operation :=  Stage_Finished;
         end;
 
         //Done.
