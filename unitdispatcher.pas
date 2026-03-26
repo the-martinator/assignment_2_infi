@@ -77,7 +77,9 @@ type
     procedure Dispatcher(var tasks:TArray_Task; var idx : integer; shopfloor: TResources );
     procedure Execute_Expedition_Order(var task:TTask; shopfloor: TResources );
     procedure Execute_Production_Order(var task:TTask; shopfloor: TResources );
+    procedure Execute_Delivery_Order(var task:TTask; shopfloor: TResources );
     function GET_AR_Position (Part : integer; Warehouse : array of integer): integer;
+    function GET_AR_Free_Position(Warehouse : array of integer): integer;
     procedure SET_AR_Position (idx : integer; Part : integer; var Warehouse : array of integer);
 
   end;
@@ -336,6 +338,26 @@ begin
   end;
 end;
 
+// Função que permite obter a primeira posição vazia da primeira coluna do armazém
+function TFormDispatcher.GET_AR_Free_Position(Warehouse : array of integer): integer;
+var
+    i : integer;
+begin
+  result := -1;
+
+  for i := 1 to Length(Warehouse)-1 do
+  begin
+      if Warehouse[9*i - 8] = 0 then
+      begin
+          result := 9*i - 8;
+          Exit;
+      end;
+  end;
+end;
+
+
+
+
 //Sets the Position of the AR with the "Part" provided
 procedure TFormDispatcher.SET_AR_Position (idx : integer; Part : integer; var Warehouse : array of integer);
 begin
@@ -397,7 +419,15 @@ begin
       // Inbound
       Type_Delivery :
       begin
-        //todo
+        if(idx < Length(tasks)) then
+                begin
+                  Memo1.Append('Task Delivery');
+                  Execute_Delivery_Order(tasks[idx], shopfloor);
+
+                  // Next Operation to be executed.
+                  if(tasks[idx].current_operation = Stage_Finished) then
+                    inc(idx_Task_Executing);
+                end;
       end;
 
       // Trash
@@ -577,9 +607,10 @@ begin
         // Getting a Free Position from the Warehouse
         Stage_GetPosition :
         begin
-          if(shopfloor.AR_free) then  //AR is free
+          if(shopfloor.AR_free) and (shopfloor.AR_In_Part <> 0) then  //AR is free
           begin
-            Part_Position_AR := GET_AR_Position(0, WAREHOUSE_Parts);
+           // Part_Position_AR := GET_AR_Position(0, WAREHOUSE_Parts);
+            Memo1.append('Position acquired.');
             if( Part_Position_AR > 0 ) then
             begin
                current_operation :=  Stage_Load;
@@ -617,6 +648,79 @@ begin
   end;
 end;
 
+// Procedure that executes a Delivery order.
+procedure TFormDispatcher.Execute_Delivery_Order(var task:TTask; shopfloor: TResources ); //por etapas no inicio
+var
+    r : integer;
+begin
+  with task do
+  begin
+     case current_operation of
+
+        Stage_To_Be_Started:
+        begin
+           current_operation :=  Stage_GetPosition;
+        end;
+
+        Stage_GetPosition:
+
+                begin
+                   Part_Position_AR := GET_AR_Free_Position(WAREHOUSE_Parts);
+
+                   if (Part_Position_AR > 0) then
+                   begin
+                      //Found space
+                      r := M_Do_Inbound(Part_Type);
+                      if (r = 1) then
+                      begin
+                         current_operation := Stage_Inbound;
+                      end;
+                   end
+                   else
+                   begin
+                      Memo1.Append('Warehouse is full!');
+                   end;
+                end;
+
+         Stage_Inbound :
+
+        begin
+          if (shopfloor.AR_In_Part <> 0) then  // just wait for any part to arrive
+          begin
+          current_operation := Stage_Load;
+          end;
+        end;
+
+        // Wait for part
+        Stage_Load:
+        begin
+           if (shopfloor.AR_free) and (shopfloor.AR_In_Part <> 0) then
+           begin
+              Memo1.Append('Loading part into position ' + IntToStr(Part_Position_AR));
+              r := M_Load(Part_Position_AR);
+
+              if (r = 1) then
+                 current_operation := Stage_Update_Pos_AR;
+           end;
+        end;
+
+        // Update the warehouse position.
+        Stage_Update_Pos_AR:
+        begin
+           SET_AR_Position(Part_Position_AR, Part_Type, WAREHOUSE_Parts);
+           Memo1.Append('Inbound successfully concluded. Part stored into position ' + IntToStr(Part_Position_AR));
+
+           current_operation := Stage_Finished;
+        end;
+
+        Stage_Finished:
+        begin
+           current_operation := Stage_Finished;
+        end;
+
+     end;
+  end;
+end;
 
 end.
 
