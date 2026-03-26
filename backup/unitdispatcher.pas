@@ -30,7 +30,7 @@ type
   //***************************************
   // Dispatcher Execution
   // Enumerated: defines all stages of TTasks
-  TStage      = (Stage_To_Be_Started = 1, Stage_GetPart, Stage_Unload, Stage_To_AR_Out, Stage_Clear_Pos_AR, Stage_Finished);   //TbC
+  TStage      = (Stage_To_Be_Started = 1, Stage_GetPart, Stage_Unload, Stage_To_AR_Out, Stage_Clear_Pos_AR,Stage_Production, Stage_load, Stage_Update_Pos_AR, Stage_Finished, Stage_GetPosition);   //TbC
 
   // Data structure for holding one Task (OE, OD, OP)
   TTask = record
@@ -76,6 +76,7 @@ type
   public
     procedure Dispatcher(var tasks:TArray_Task; var idx : integer; shopfloor: TResources );
     procedure Execute_Expedition_Order(var task:TTask; shopfloor: TResources );
+    procedure Execute_Production_Order(var task:TTask; shopfloor: TResources );
     function GET_AR_Position (Part : integer; Warehouse : array of integer): integer;
     procedure SET_AR_Position (idx : integer; Part : integer; var Warehouse : array of integer);
 
@@ -503,12 +504,16 @@ begin
           if(shopfloor.AR_free) then  //AR is free
           begin
             if Part_Destination = 1 then
-            Part_Position_AR := GET_AR_Position(Part_Type - 3, WAREHOUSE_Parts);
-            Memo1.Append('Getting Part from Position' + IntToStr(Part_Position_AR));
-            else
-            Part_Position_AR := GET_AR_Position(Part_Type - 6, WAREHOUSE_Parts); //Raw Part to Get
-            Memo1.Append('Getting Part from Position' + IntToStr(Part_Position_AR));
+            begin
 
+               Part_Position_AR := GET_AR_Position((Part_Type - 3), WAREHOUSE_Parts);
+               Memo1.Append('Getting Part from Position' + IntToStr(Part_Position_AR));
+            end
+            else
+            begin
+                Part_Position_AR := GET_AR_Position(Part_Type - 6, WAREHOUSE_Parts); //Raw Part to Get
+                Memo1.Append('Getting Part from Position' + IntToStr(Part_Position_AR));
+            end;
             if( Part_Position_AR > 0 ) then
             begin
                current_operation :=  Stage_Unload;
@@ -593,7 +598,7 @@ begin
         Stage_Update_Pos_AR :
         begin
           SET_AR_Position(Part_Position_AR, Part_Type, WAREHOUSE_Parts);    //is this right?
-          current_operation :=  Stage_Production;
+          current_operation :=  Stage_Finished;
         end;
 
         //Done.
