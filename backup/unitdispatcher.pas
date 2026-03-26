@@ -213,9 +213,10 @@ begin
 
   // ******************************************
   // Simulating the result of the SQL query:
-  SetLength(Production_Orders, 2);                   //Let's create only some Orders to use as an example. STUDENT MUST CHANGE ACCORDING TO REQUIREMENTS
+  SetLength(Production_Orders, 5);                   //Let's create only some Orders to use as an example. STUDENT MUST CHANGE ACCORDING TO REQUIREMENTS
 
   //Expedition
+  (*
   production_order.order_type   := Type_Expedition ;
   production_order.part_numbers := 2;
   production_order.part_type    := Part_Base_Blue;    //Blue Base
@@ -225,12 +226,15 @@ begin
   production_order.part_numbers := 2;
   production_order.part_type    := Part_Lid_Green;    //Green Lids
   Production_Orders[1]          := production_order;  //Saving..
+  *)
 
   (*
   production_order.order_type     := Type_Delivery ;    //Inbounds
   production_order.part_numbers   := 1;
   production_order.part_type      := 2;                    //Green Raw Material
   Production_Orders[1]            := production_order;
+
+   *)
 
   production_order.order_type     := Type_Production;   //Production
   production_order.part_numbers   := 1;
@@ -241,7 +245,7 @@ begin
   production_order.part_numbers   := 1;
   production_order.part_type      := 4;                    //Green Base
   Production_Orders[4]            := production_order;
-  *)
+
   // ******************************************
 
   // for Scheduling
@@ -282,9 +286,9 @@ begin
   // WAREHOUSE MANAGEMENT
 
   // Initialization of parts in the first column of the warehouse.
-  r := M_Initialize(1, Part_Base_Blue);
+  r := M_Initialize(1, Part_Raw_Blue);
   sleep(1500);
-  r := r + M_Initialize(10, Part_Base_Blue);
+  r := r + M_Initialize(10, Part_Raw_Blue);
   sleep(1500);
   r := r + M_Initialize(19, Part_Lid_Green);
   sleep(1500);
@@ -300,8 +304,8 @@ begin
   begin
       WAREHOUSE_Parts[cel] := 0;
   end;
-  WAREHOUSE_Parts[1]       := Part_Base_Blue;
-  WAREHOUSE_Parts[10]      := Part_Base_Blue;
+  WAREHOUSE_Parts[1]       := Part_Raw_Blue;
+  WAREHOUSE_Parts[10]      := Part_Raw_Blue;
   WAREHOUSE_Parts[19]      := Part_Lid_Green;
   WAREHOUSE_Parts[28]      := Part_Lid_Green;
 

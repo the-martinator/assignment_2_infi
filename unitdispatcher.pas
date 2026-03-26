@@ -213,7 +213,7 @@ begin
 
   // ******************************************
   // Simulating the result of the SQL query:
-  SetLength(Production_Orders, 2);                   //Let's create only some Orders to use as an example. STUDENT MUST CHANGE ACCORDING TO REQUIREMENTS
+  SetLength(Production_Orders, 5);                   //Let's create only some Orders to use as an example. STUDENT MUST CHANGE ACCORDING TO REQUIREMENTS
 
   //Expedition
   (*
@@ -286,9 +286,9 @@ begin
   // WAREHOUSE MANAGEMENT
 
   // Initialization of parts in the first column of the warehouse.
-  r := M_Initialize(1, Part_Base_Blue);
+  r := M_Initialize(1, Part_Raw_Blue);
   sleep(1500);
-  r := r + M_Initialize(10, Part_Base_Blue);
+  r := r + M_Initialize(10, Part_Raw_Blue);
   sleep(1500);
   r := r + M_Initialize(19, Part_Lid_Green);
   sleep(1500);
@@ -304,8 +304,8 @@ begin
   begin
       WAREHOUSE_Parts[cel] := 0;
   end;
-  WAREHOUSE_Parts[1]       := Part_Base_Blue;
-  WAREHOUSE_Parts[10]      := Part_Base_Blue;
+  WAREHOUSE_Parts[1]       := Part_Raw_Blue;
+  WAREHOUSE_Parts[10]      := Part_Raw_Blue;
   WAREHOUSE_Parts[19]      := Part_Lid_Green;
   WAREHOUSE_Parts[28]      := Part_Lid_Green;
 
@@ -550,16 +550,7 @@ begin
         //Send a part to production
         Stage_Production:
         begin
-          //if (task.Part_Type = 4) or (task.Part_Type = 5) or task.Part_Type = 6) then       //mudar o numero para parttype  e usar task.part_destination (var global)
-          //begin      //Send raw material to Cell 1 or 2 depending on producing Base or Lid
-          //  Memo1.Append('Producing Base')
-          // r := M_Do_Production(1);
-          //end
-          //else if (task.Part_Type = 7) or (task.Part_Type = 8) or task.Part_Type = 9) then
-          // begin
-          //  Memo1.Append('Producing Lid')
-           // r := M_Do_Production(2);
-         // end
+
          if Part_Destination = 1 then
             Memo1.Append('Producing Base')
          else
