@@ -30,7 +30,7 @@ type
   //***************************************
   // Dispatcher Execution
   // Enumerated: defines all stages of TTasks
-  TStage      = (Stage_To_Be_Started = 1, Stage_GetPart, Stage_Unload, Stage_To_AR_Out, Stage_Clear_Pos_AR,Stage_Production, Stage_load, Stage_Update_Pos_AR, Stage_Finished, Stage_GetPosition);   //TbC
+  TStage      = (Stage_To_Be_Started = 1, Stage_GetPart, Stage_Unload, Stage_To_AR_Out, Stage_wait, Stage_Clear_Pos_AR,Stage_Production, Stage_load, Stage_Update_Pos_AR, Stage_Finished, Stage_GetPosition);   //TbC
 
   // Data structure for holding one Task (OE, OD, OP)
   TTask = record
@@ -241,11 +241,12 @@ begin
   production_order.part_type      := 4;                    //Blue Base
   Production_Orders[2]            := production_order;
 
+  (*
   production_order.order_type     := Type_Expedition;   //Expedition
   production_order.part_numbers   := 1;
   production_order.part_type      := 4;                    //Green Base
   Production_Orders[4]            := production_order;
-
+ *)
   // ******************************************
 
   // for Scheduling
@@ -557,10 +558,21 @@ begin
              Memo1.Append('Producing Lid');
 
          r := M_Do_Production(Part_Destination);
+         Memo1.Append(IntToStr(r) + ' ' + IntToStr(Part_Destination));
+         Memo1.Append(IntToStr(part_type));
 
           if ( r = 1 ) then                                 //sucess
-             current_operation :=  Stage_GetPosition;
+             current_operation :=  Stage_Wait;
         end;
+
+        Stage_Wait:
+        begin
+        if (shopfloor.AR_In_Part <> 0) then
+        begin
+          current_operation := Stage_GetPosition;
+        end;
+      end;
+
 
         // Getting a Free Position from the Warehouse
         Stage_GetPosition :

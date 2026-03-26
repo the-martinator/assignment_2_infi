@@ -30,7 +30,7 @@ type
   //***************************************
   // Dispatcher Execution
   // Enumerated: defines all stages of TTasks
-  TStage      = (Stage_To_Be_Started = 1, Stage_GetPart, Stage_Unload, Stage_To_AR_Out, Stage_Clear_Pos_AR,Stage_Production, Stage_load, Stage_Update_Pos_AR, Stage_Finished, Stage_GetPosition);   //TbC
+  TStage      = (Stage_To_Be_Started = 1, Stage_GetPart, Stage_Unload, Stage_To_AR_Out, Stage_wait, Stage_Clear_Pos_AR,Stage_Production, Stage_load, Stage_Update_Pos_AR, Stage_Finished, Stage_GetPosition);   //TbC
 
   // Data structure for holding one Task (OE, OD, OP)
   TTask = record
@@ -241,11 +241,12 @@ begin
   production_order.part_type      := 4;                    //Blue Base
   Production_Orders[2]            := production_order;
 
+  (*
   production_order.order_type     := Type_Expedition;   //Expedition
   production_order.part_numbers   := 1;
   production_order.part_type      := 4;                    //Green Base
   Production_Orders[4]            := production_order;
-
+ *)
   // ******************************************
 
   // for Scheduling
@@ -550,26 +551,28 @@ begin
         //Send a part to production
         Stage_Production:
         begin
-          //if (task.Part_Type = 4) or (task.Part_Type = 5) or task.Part_Type = 6) then       //mudar o numero para parttype  e usar task.part_destination (var global)
-          //begin      //Send raw material to Cell 1 or 2 depending on producing Base or Lid
-          //  Memo1.Append('Producing Base')
-          // r := M_Do_Production(1);
-          //end
-          //else if (task.Part_Type = 7) or (task.Part_Type = 8) or task.Part_Type = 9) then
-          // begin
-          //  Memo1.Append('Producing Lid')
-           // r := M_Do_Production(2);
-         // end
+
          if Part_Destination = 1 then
             Memo1.Append('Producing Base')
          else
              Memo1.Append('Producing Lid');
 
          r := M_Do_Production(Part_Destination);
+         Memo1.Append(IntToStr(r) + ' ' + IntToStr(Part_Destination));
+         Memo1.Append(task);
 
           if ( r = 1 ) then                                 //sucess
-             current_operation :=  Stage_GetPosition;
+             current_operation :=  Stage_Wait;
         end;
+
+        Stage_Wait:
+        begin
+        if (shopfloor.AR_In_Part <> 0) then
+        begin
+          current_operation := Stage_GetPosition;
+        end;
+      end;
+
 
         // Getting a Free Position from the Warehouse
         Stage_GetPosition :
