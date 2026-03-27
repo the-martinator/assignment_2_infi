@@ -69,6 +69,7 @@ type
     ComboBox1: TComboBox;
     ComboBox2: TComboBox;
     ComboBox3: TComboBox;
+    GroupBox_controls: TGroupBox;
     GroupBox_log: TGroupBox;
     GroupBox_Production: TGroupBox;
     GroupBox_Stock: TGroupBox;
@@ -413,6 +414,11 @@ begin
 
   SimpleScheduler(Production_Orders, ShopTasks);
   Timer1.Enabled := true;
+  Memo_Log.Append('Initializing warehouse with ' +
+  IntToStr(SpinEdit_Raw_Blue.Value + SpinEdit_Raw_Green.Value + SpinEdit_Raw_Gray.Value +
+           SpinEdit_Base_Blue.Value + SpinEdit_Base_Green.Value + SpinEdit_Base_Gray.Value +
+           SpinEdit_Lid_Blue.Value + SpinEdit_Lid_green.Value + SpinEdit_Lid_gray.Value)
+  + ' part(s).');
   Memo_log.Append('Warehouse successfully innitiated!');
 end;
 
@@ -485,6 +491,7 @@ begin
       Timer1.Enabled := false;
       Exit;
     end;
+    Memo_Log.Append('--- Cycle: Task ' + IntToStr(idx+1) + ' of ' + IntToStr(Length(tasks)) + ' ---');
     case tasks[idx].task_type of
 
       // Expedition
@@ -492,7 +499,7 @@ begin
       begin
         if(idx < Length(tasks)) then
         begin
-          Memo_Log.Append('Task Expedition');
+          Memo_Log.Append('Executing Expedition task...');
           Execute_Expedition_Order(tasks[idx], shopfloor);
 
           // Next Operation to be executed.
@@ -507,7 +514,7 @@ begin
       begin
         if(idx < Length(tasks)) then
                 begin
-                  Memo_Log.Append('Task Production');
+                  Memo_Log.Append('Executing Production task...');
                   Execute_Production_Order(tasks[idx], shopfloor);
 
                   // Next Operation to be executed.
@@ -522,7 +529,7 @@ begin
       begin
         if(idx < Length(tasks)) then
                 begin
-                  Memo_Log.Append('Task Delivery');
+                  Memo_Log.Append('Executing Delivery task...');
                   Execute_Delivery_Order(tasks[idx], shopfloor);
 
                   // Next Operation to be executed.
@@ -559,7 +566,7 @@ begin
           if(shopfloor.AR_free) then  //AR is free
           begin
             Part_Position_AR := GET_AR_Position(Part_Type, WAREHOUSE_Parts);
-            Memo_Log.Append(IntToStr(Part_Position_AR));
+            Memo_Log.Append('Looking for part ' + IntToStr(Part_Type) + ' -> found at position ' + IntToStr(Part_Position_AR));
 
             if( Part_Position_AR > 0 ) then
             begin
@@ -575,7 +582,7 @@ begin
         // Request to unload that part
         Stage_Unload :
         begin
-          Memo_Log.Append('AR Unloading: ' + IntToStr(Part_Position_AR));
+          Memo_Log.Append('Unloading part from warehouse position ' + IntToStr(Part_Position_AR));
           r := M_Unload(Part_Position_AR);
 
           if ( r = 1 ) then                                 //sucess
@@ -588,7 +595,7 @@ begin
           if( ShopResources.AR_Out_Part  = Part_Type ) then
           begin
             r := M_Do_Expedition(Part_Destination);          // Expedition
-
+            Memo_Log.Append('Waiting for part ' + IntToStr(Part_Type) + ' on output conveyor...');
             if( r = 1) then                                  // sucess
              current_operation :=  Stage_Clear_Pos_AR;
           end;
@@ -604,6 +611,7 @@ begin
         //Done.
         Stage_Finished :
         begin
+          Memo_Log.Append('Expedition order ' + IntToStr(task.order_index+1) + ' completed successfully.');
           StringGrid1.Cells[5, task.order_index + 1] := 'Completed';
           current_operation :=  Stage_Finished;
         end;
@@ -635,16 +643,15 @@ begin
         begin
           if(shopfloor.AR_free) then  //AR is free
           begin
+            Memo_Log.Append('Looking for raw part at position ' + IntToStr(Part_Position_AR));
             if Part_Destination = 1 then
             begin
-
                Part_Position_AR := GET_AR_Position((Part_Type - 3), WAREHOUSE_Parts);
-               Memo_Log.Append('Getting Part from Position' + IntToStr(Part_Position_AR));
+
             end
             else
             begin
                 Part_Position_AR := GET_AR_Position(Part_Type - 6, WAREHOUSE_Parts); //Raw Part to Get
-                Memo_Log.Append('Getting Part from Position' + IntToStr(Part_Position_AR));
             end;
             if( Part_Position_AR > 0 ) then
             begin
@@ -660,7 +667,7 @@ begin
         // Request to unload that part
         Stage_Unload :
         begin
-          Memo_Log.Append('AR Unloading: ' + IntToStr(Part_Position_AR));
+          Memo_Log.Append('Unloading raw part from warehouse position ' + IntToStr(Part_Position_AR));
           r := M_Unload(Part_Position_AR);
 
           if ( r = 1 ) then                                 //sucess
@@ -678,7 +685,7 @@ begin
         //Send a part to production
         Stage_Production:
         begin
-          if (shopfloor.AR_Out_Part = (Part_Type - 3)) then
+          if (shopfloor.AR_Out_Part = (Part_Type - 3)) or (shopfloor.AR_Out_Part = (Part_Type - 6))  then
           begin
             if Part_Destination = 1 then
               Memo_Log.Append('Producing Base')
@@ -686,8 +693,7 @@ begin
               Memo_Log.Append('Producing Lid');
 
             r := M_Do_Production(Part_Destination);
-            Memo_Log.Append(IntToStr(r) + ' ' + IntToStr(Part_Destination));
-            Memo_Log.Append(IntToStr(part_type));
+            Memo_Log.Append('Production result: ' + IntToStr(r) + ' | Destination: ' + IntToStr(Part_Destination) + ' | Part type: ' + IntToStr(part_type));
 
             if (r = 1) then
               current_operation := Stage_Wait;
@@ -696,6 +702,7 @@ begin
 
         Stage_Wait:
         begin
+        Memo_Log.Append('Waiting for produced part to arrive on input conveyor...');
         if (shopfloor.AR_In_Part <> 0) then
         begin
           current_operation := Stage_GetPosition;
@@ -723,7 +730,7 @@ begin
         // Request to Load that part
         Stage_Load :
         begin
-          Memo_Log.Append('AR Loading to Position: ' + IntToStr(Part_Position_AR));
+          Memo_Log.Append('Loading produced part into warehouse position ' + IntToStr(Part_Position_AR));
           r := M_Load(Part_Position_AR);
 
           if ( r = 1 ) then                                 //sucess
@@ -740,6 +747,7 @@ begin
         //Done.
         Stage_Finished :
         begin
+          Memo_Log.Append('Production order ' + IntToStr(task.order_index+1) + ' completed successfully.');
           StringGrid1.Cells[5, task.order_index + 1] := 'Completed';
           current_operation :=  Stage_Finished;
         end;
@@ -768,6 +776,7 @@ begin
 
                    if (Part_Position_AR > 0) then
                    begin
+                   Memo_Log.Append('Free warehouse position found: ' + IntToStr(Part_Position_AR));
                       //Found space
                       r := M_Do_Inbound(Part_Type);
                       if (r = 1) then
@@ -782,10 +791,11 @@ begin
                 end;
 
          Stage_Inbound :
-
         begin
+           Memo_Log.Append('Waiting for part to arrive on input conveyor...');
           if (shopfloor.AR_In_Part <> 0) then  // just wait for any part to arrive
           begin
+          Memo_Log.Append('Part detected on input conveyor. Proceeding to load.');
           current_operation := Stage_Load;
           end;
         end;
@@ -795,7 +805,7 @@ begin
         begin
            if (shopfloor.AR_free) and (shopfloor.AR_In_Part <> 0) then
            begin
-              Memo_Log.Append('Loading part into position ' + IntToStr(Part_Position_AR));
+              Memo_Log.Append('Loading inbound part into warehouse position ' + IntToStr(Part_Position_AR));
               r := M_Load(Part_Position_AR);
 
               if (r = 1) then
@@ -807,13 +817,14 @@ begin
         Stage_Update_Pos_AR_1:
         begin
            SET_AR_Position(Part_Position_AR, Part_Type, WAREHOUSE_Parts);
-           Memo_Log.Append('Inbound successfully concluded. Part stored into position ' + IntToStr(Part_Position_AR));
+           Memo_Log.Append('Inbound complete. Part ' + IntToStr(Part_Type) + ' stored at warehouse position ' + IntToStr(Part_Position_AR));
 
            current_operation := Stage_Finished;
         end;
 
         Stage_Finished:
         begin
+           Memo_Log.Append('Delivery order ' + IntToStr(task.order_index+1) + ' completed successfully.');
            StringGrid1.Cells[5, task.order_index + 1] := 'Completed';
            current_operation := Stage_Finished;
         end;
