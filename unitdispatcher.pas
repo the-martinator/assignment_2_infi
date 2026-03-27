@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  comUnit;
+  Spin, comUnit;
 
 type
 
@@ -30,7 +30,7 @@ type
   //***************************************
   // Dispatcher Execution
   // Enumerated: defines all stages of TTasks
-  TStage      = (Stage_To_Be_Started = 1, Stage_GetPart, Stage_Unload, Stage_To_AR_Out, Stage_wait, Stage_Clear_Pos_AR,Stage_Production, Stage_load, Stage_Update_Pos_AR, Stage_Finished, Stage_GetPosition);   //TbC
+  TStage      = (Stage_To_Be_Started = 1, Stage_GetPart, Stage_Unload, Stage_To_AR_Out, Stage_wait, Stage_Clear_Pos_AR,Stage_Production, Stage_Load, Stage_Update_Pos_AR, Stage_Finished, Stage_GetPosition, Stage_Inbound, Stage_Get_Free_Position, Stage_Update_Pos_AR_1);   //TbC
 
   // Data structure for holding one Task (OE, OD, OP)
   TTask = record
@@ -64,12 +64,33 @@ type
     BStart: TButton;
     BExecute: TButton;
     BInitiatilize: TButton;
-    Memo1: TMemo;
+    GroupBox_log: TGroupBox;
+    GroupBox_Production: TGroupBox;
+    GroupBox_Stock: TGroupBox;
+    Label_Lid: TLabel;
+    Label_Base: TLabel;
+    Label_Raw_material: TLabel;
+    Memo_Log: TMemo;
+    Panel_green: TPanel;
+    Panel_gray: TPanel;
+    Panel_Blue: TPanel;
+    SpinEdit_Raw_Green: TSpinEdit;
+    SpinEdit_Raw_Gray: TSpinEdit;
+    SpinEdit_Base_Blue: TSpinEdit;
+    SpinEdit_Base_Green: TSpinEdit;
+    SpinEdit_Base_Gray: TSpinEdit;
+    SpinEdit_Lid_Blue: TSpinEdit;
+    SpinEdit_Lid_green: TSpinEdit;
+    SpinEdit_Lid_gray: TSpinEdit;
+    SpinEdit_Raw_Blue: TSpinEdit;
     Timer1: TTimer;
     procedure BExecuteClick(Sender: TObject);
     procedure BInitiatilizeClick(Sender: TObject);
     procedure BStartClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure GroupBox_ProductionClick(Sender: TObject);
+    procedure Label_RawClick(Sender: TObject);
+    procedure Memo_LogChange(Sender: TObject);
     procedure Timer1Timer(Sender: TObject);
   private
 
@@ -218,7 +239,7 @@ begin
   SetLength(Production_Orders, 5);                   //Let's create only some Orders to use as an example. STUDENT MUST CHANGE ACCORDING TO REQUIREMENTS
 
   //Expedition
-  (*
+
   production_order.order_type   := Type_Expedition ;
   production_order.part_numbers := 2;
   production_order.part_type    := Part_Base_Blue;    //Blue Base
@@ -228,27 +249,22 @@ begin
   production_order.part_numbers := 2;
   production_order.part_type    := Part_Lid_Green;    //Green Lids
   Production_Orders[1]          := production_order;  //Saving..
-  *)
 
-  (*
   production_order.order_type     := Type_Delivery ;    //Inbounds
   production_order.part_numbers   := 1;
-  production_order.part_type      := 2;                    //Green Raw Material
-  Production_Orders[1]            := production_order;
-
-   *)
+  production_order.part_type      := Part_Raw_Blue;     //Blue Raw Material
+  Production_Orders[2]            := production_order;
 
   production_order.order_type     := Type_Production;   //Production
   production_order.part_numbers   := 1;
-  production_order.part_type      := 4;                    //Blue Base
-  Production_Orders[2]            := production_order;
-
+  production_order.part_type      := Part_Base_Blue;     //Blue Base
+  Production_Orders[3]            := production_order;
   (*
   production_order.order_type     := Type_Expedition;   //Expedition
   production_order.part_numbers   := 1;
   production_order.part_type      := 4;                    //Green Base
   Production_Orders[4]            := production_order;
- *)
+  *)
   // ******************************************
 
   // for Scheduling
@@ -272,6 +288,21 @@ begin
   idx_Task_Executing := 0;
 end;
 
+procedure TFormDispatcher.GroupBox_ProductionClick(Sender: TObject);
+begin
+
+end;
+
+procedure TFormDispatcher.Label_RawClick(Sender: TObject);
+begin
+
+end;
+
+procedure TFormDispatcher.Memo_LogChange(Sender: TObject);
+begin
+
+end;
+
 procedure TFormDispatcher.Timer1Timer(Sender: TObject);
 begin
   BExecuteClick(Self);
@@ -283,22 +314,121 @@ end;
 //Initialization of the MES /week. This procedure run only once per week
 procedure TFormDispatcher.BInitiatilizeClick(Sender: TObject);
 var
+  cel, i: integer;
+  freePosition: integer;
+begin
+  Memo_Log.Append('Innitializing Warehouse');
+
+  //Clean warehouse memory
+  SetLength(WAREHOUSE_Parts, 55);
+  for cel := 1 to 54 do
+  begin
+    WAREHOUSE_Parts[cel] := 0;
+  end;
+
+  freePosition := 1;
+
+if SpinEdit_Raw_Blue.Value + SpinEdit_Raw_Green.Value + SpinEdit_Raw_Gray.Value + SpinEdit_Base_Blue.Value + SpinEdit_Base_Green.Value + SpinEdit_Base_Gray.Value + SpinEdit_Lid_Blue.Value + SpinEdit_Lid_green.Value + SpinEdit_Lid_gray.Value < 5 then
+begin
+  for i := 1 to SpinEdit_Raw_Blue.Value do
+  begin
+    M_Initialize(freePosition, Part_Raw_Blue);
+    WAREHOUSE_Parts[freePosition] := Part_Raw_Blue;
+    freePosition := freePosition + 9; // next position
+    Sleep(1500);
+  end;
+
+  for i := 1 to SpinEdit_Raw_Green.Value do
+  begin
+    M_Initialize(freePosition, Part_Raw_Green);
+    WAREHOUSE_Parts[freePosition] := Part_Raw_Green;
+    freePosition := freePosition + 9; // next position
+    Sleep(1500);
+  end;
+
+    for i := 1 to SpinEdit_Raw_Gray.Value do
+  begin
+    M_Initialize(freePosition, Part_Raw_Grey);
+    WAREHOUSE_Parts[freePosition] := Part_Raw_Grey;
+    freePosition := freePosition + 9; // next position
+    Sleep(1500);
+  end;
+
+    for i := 1 to SpinEdit_Lid_Blue.Value do
+  begin
+    M_Initialize(freePosition, Part_Lid_Blue);
+    WAREHOUSE_Parts[freePosition] := Part_Lid_Blue;
+    freePosition := freePosition + 9; // next position
+    Sleep(1500);
+  end;
+
+      for i := 1 to SpinEdit_Lid_Green.Value do
+  begin
+    M_Initialize(freePosition, Part_Lid_Green);
+    WAREHOUSE_Parts[freePosition] := Part_Lid_Green;
+    freePosition := freePosition + 9; // next position
+    Sleep(1500);
+    end;
+
+        for i := 1 to SpinEdit_Lid_Gray.Value do
+  begin
+    M_Initialize(freePosition, Part_Lid_Grey);
+    WAREHOUSE_Parts[freePosition] := Part_Lid_Grey;
+    freePosition := freePosition + 9; // next position
+    Sleep(1500);
+  end;
+
+        for i := 1 to SpinEdit_Base_Blue.Value do
+  begin
+    M_Initialize(freePosition, Part_Base_Blue);
+    WAREHOUSE_Parts[freePosition] := Part_Base_Blue;
+    freePosition := freePosition + 9; // next position
+    Sleep(1500);
+  end;
+
+            for i := 1 to SpinEdit_Base_Green.Value do
+  begin
+    M_Initialize(freePosition, Part_Base_Green);
+    WAREHOUSE_Parts[freePosition] := Part_Base_Green;
+    freePosition := freePosition + 9; // next position
+    Sleep(1500);
+  end;
+
+            for i := 1 to SpinEdit_Base_Gray.Value do
+  begin
+    M_Initialize(freePosition, Part_Base_Grey);
+    WAREHOUSE_Parts[freePosition] := Part_Base_Grey;
+    freePosition := freePosition + 9; // next position
+    Sleep(1500);
+  end;
+
+  end;
+
+  SimpleScheduler(Production_Orders, ShopTasks);
+  Timer1.Enabled := true;
+  Memo_log.Append('Warehouse successfully innitiated!');
+end;
+
+
+
+(*
+var
     cel, r: integer;
 begin
   // *********************************************************
   // WAREHOUSE MANAGEMENT
 
   // Initialization of parts in the first column of the warehouse.
-  r := M_Initialize(1, Part_Raw_Blue);
+  r := M_Initialize(1, Part_Base_Blue);
   sleep(1500);
-  r := r + M_Initialize(10, Part_Raw_Blue);
+  r := r + M_Initialize(10, Part_Base_Blue);
   sleep(1500);
   r := r + M_Initialize(19, Part_Lid_Green);
   sleep(1500);
   r := r + M_Initialize(28, Part_Lid_Green);
 
   if( r > 4) then
-    Memo1.Append('Innitiatialization with errors');
+    Memo_Log.Append('Innitiatialization with errors');
 
 
   //Update the Warehouse according to the previous innitialization
@@ -307,8 +437,8 @@ begin
   begin
       WAREHOUSE_Parts[cel] := 0;
   end;
-  WAREHOUSE_Parts[1]       := Part_Raw_Blue;
-  WAREHOUSE_Parts[10]      := Part_Raw_Blue;
+  WAREHOUSE_Parts[1]       := Part_Base_Blue;
+  WAREHOUSE_Parts[10]      := Part_Base_Blue;
   WAREHOUSE_Parts[19]      := Part_Lid_Green;
   WAREHOUSE_Parts[28]      := Part_Lid_Green;
 
@@ -321,7 +451,7 @@ begin
   Timer1.Enabled:= true;
 end;
 
-
+*)
 
 // get the first position (cell) in AR that contains the "Part"
 function TFormDispatcher.GET_AR_Position (Part : integer; Warehouse : array of integer): integer;
@@ -391,7 +521,7 @@ begin
       begin
         if(idx < Length(tasks)) then
         begin
-          Memo1.Append('Task Expedition');
+          Memo_Log.Append('Task Expedition');
           Execute_Expedition_Order(tasks[idx], shopfloor);
 
           // Next Operation to be executed.
@@ -406,7 +536,7 @@ begin
       begin
         if(idx < Length(tasks)) then
                 begin
-                  Memo1.Append('Task Production');
+                  Memo_Log.Append('Task Production');
                   Execute_Production_Order(tasks[idx], shopfloor);
 
                   // Next Operation to be executed.
@@ -421,7 +551,7 @@ begin
       begin
         if(idx < Length(tasks)) then
                 begin
-                  Memo1.Append('Task Delivery');
+                  Memo_Log.Append('Task Delivery');
                   Execute_Delivery_Order(tasks[idx], shopfloor);
 
                   // Next Operation to be executed.
@@ -463,7 +593,7 @@ begin
           if(shopfloor.AR_free) then  //AR is free
           begin
             Part_Position_AR := GET_AR_Position(Part_Type, WAREHOUSE_Parts);
-            Memo1.Append(IntToStr(Part_Position_AR));
+            Memo_Log.Append(IntToStr(Part_Position_AR));
 
             if( Part_Position_AR > 0 ) then
             begin
@@ -479,7 +609,7 @@ begin
         // Request to unload that part
         Stage_Unload :
         begin
-          Memo1.Append('AR Unloading: ' + IntToStr(Part_Position_AR));
+          Memo_Log.Append('AR Unloading: ' + IntToStr(Part_Position_AR));
           r := M_Unload(Part_Position_AR);
 
           if ( r = 1 ) then                                 //sucess
@@ -542,12 +672,12 @@ begin
             begin
 
                Part_Position_AR := GET_AR_Position((Part_Type - 3), WAREHOUSE_Parts);
-               Memo1.Append('Getting Part from Position' + IntToStr(Part_Position_AR));
+               Memo_Log.Append('Getting Part from Position' + IntToStr(Part_Position_AR));
             end
             else
             begin
                 Part_Position_AR := GET_AR_Position(Part_Type - 6, WAREHOUSE_Parts); //Raw Part to Get
-                Memo1.Append('Getting Part from Position' + IntToStr(Part_Position_AR));
+                Memo_Log.Append('Getting Part from Position' + IntToStr(Part_Position_AR));
             end;
             if( Part_Position_AR > 0 ) then
             begin
@@ -563,7 +693,7 @@ begin
         // Request to unload that part
         Stage_Unload :
         begin
-          Memo1.Append('AR Unloading: ' + IntToStr(Part_Position_AR));
+          Memo_Log.Append('AR Unloading: ' + IntToStr(Part_Position_AR));
           r := M_Unload(Part_Position_AR);
 
           if ( r = 1 ) then                                 //sucess
@@ -575,24 +705,26 @@ begin
         Stage_Clear_Pos_AR :
         begin
           SET_AR_Position(Part_Position_AR, 0, WAREHOUSE_Parts);
-          current_operation :=  Stage_Production;      //mudei isto
+          current_operation :=  Stage_Production;
         end;
 
         //Send a part to production
         Stage_Production:
         begin
+          if (shopfloor.AR_Out_Part = (Part_Type - 3)) then
+          begin
+            if Part_Destination = 1 then
+              Memo_Log.Append('Producing Base')
+            else
+              Memo_Log.Append('Producing Lid');
 
-         if Part_Destination = 1 then
-            Memo1.Append('Producing Base')
-         else
-             Memo1.Append('Producing Lid');
+            r := M_Do_Production(Part_Destination);
+            Memo_Log.Append(IntToStr(r) + ' ' + IntToStr(Part_Destination));
+            Memo_Log.Append(IntToStr(part_type));
 
-         r := M_Do_Production(Part_Destination);
-         Memo1.Append(IntToStr(r) + ' ' + IntToStr(Part_Destination));
-         Memo1.Append(IntToStr(part_type));
-
-          if ( r = 1 ) then                                 //sucess
-             current_operation :=  Stage_Wait;
+            if (r = 1) then
+              current_operation := Stage_Wait;
+          end;
         end;
 
         Stage_Wait:
@@ -609,8 +741,7 @@ begin
         begin
           if(shopfloor.AR_free) and (shopfloor.AR_In_Part <> 0) then  //AR is free
           begin
-           // Part_Position_AR := GET_AR_Position(0, WAREHOUSE_Parts);
-            Memo1.append('Position acquired.');
+            Memo_Log.append('Position acquired.');
             if( Part_Position_AR > 0 ) then
             begin
                current_operation :=  Stage_Load;
@@ -625,7 +756,7 @@ begin
         // Request to Load that part
         Stage_Load :
         begin
-          Memo1.Append('AR Loading to Position: ' + IntToStr(Part_Position_AR));
+          Memo_Log.Append('AR Loading to Position: ' + IntToStr(Part_Position_AR));
           r := M_Load(Part_Position_AR);
 
           if ( r = 1 ) then                                 //sucess
@@ -659,10 +790,10 @@ begin
 
         Stage_To_Be_Started:
         begin
-           current_operation :=  Stage_GetPosition;
+           current_operation :=  Stage_Get_Free_Position;
         end;
 
-        Stage_GetPosition:
+        Stage_Get_Free_Position:
 
                 begin
                    Part_Position_AR := GET_AR_Free_Position(WAREHOUSE_Parts);
@@ -678,7 +809,7 @@ begin
                    end
                    else
                    begin
-                      Memo1.Append('Warehouse is full!');
+                      Memo_Log.Append('Warehouse is full!');
                    end;
                 end;
 
@@ -696,19 +827,19 @@ begin
         begin
            if (shopfloor.AR_free) and (shopfloor.AR_In_Part <> 0) then
            begin
-              Memo1.Append('Loading part into position ' + IntToStr(Part_Position_AR));
+              Memo_Log.Append('Loading part into position ' + IntToStr(Part_Position_AR));
               r := M_Load(Part_Position_AR);
 
               if (r = 1) then
-                 current_operation := Stage_Update_Pos_AR;
+                 current_operation := Stage_Update_Pos_AR_1;
            end;
         end;
 
         // Update the warehouse position.
-        Stage_Update_Pos_AR:
+        Stage_Update_Pos_AR_1:
         begin
            SET_AR_Position(Part_Position_AR, Part_Type, WAREHOUSE_Parts);
-           Memo1.Append('Inbound successfully concluded. Part stored into position ' + IntToStr(Part_Position_AR));
+           Memo_Log.Append('Inbound successfully concluded. Part stored into position ' + IntToStr(Part_Position_AR));
 
            current_operation := Stage_Finished;
         end;

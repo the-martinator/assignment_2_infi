@@ -1,18 +1,29 @@
 object FormDispatcher: TFormDispatcher
-  Left = 771
-  Height = 486
-  Top = 120
-  Width = 501
+  Left = 509
+  Height = 949
+  Top = 164
+  Width = 1148
   Caption = 'Dispatcher'
-  ClientHeight = 486
-  ClientWidth = 501
+  ClientHeight = 949
+  ClientWidth = 1148
   DesignTimePPI = 120
   LCLVersion = '4.4.0.0'
   OnCreate = FormCreate
+  object GroupBox_log: TGroupBox
+    Left = 25
+    Height = 220
+    Top = 532
+    Width = 1087
+    Caption = 'Production Log'
+    Color = clNavy
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 6
+  end
   object BStart: TButton
-    Left = 10
+    Left = 688
     Height = 31
-    Top = 20
+    Top = 792
     Width = 174
     Caption = 'Start'
     ParentFont = False
@@ -20,40 +31,195 @@ object FormDispatcher: TFormDispatcher
     OnClick = BStartClick
   end
   object BExecute: TButton
-    Left = 10
+    Left = 688
     Height = 31
-    Top = 120
+    Top = 892
     Width = 174
     Caption = 'Execute Cycle'
     ParentFont = False
     TabOrder = 1
     OnClick = BExecuteClick
   end
-  object Memo1: TMemo
-    Left = 200
-    Height = 462
-    Top = 20
-    Width = 290
+  object Memo_Log: TMemo
+    Left = 32
+    Height = 176
+    Top = 568
+    Width = 1074
     Lines.Strings = (
       'Memo1'
     )
     ParentFont = False
     TabOrder = 2
+    OnChange = Memo_LogChange
   end
   object BInitiatilize: TButton
-    Left = 10
+    Left = 688
     Height = 31
-    Top = 70
+    Top = 842
     Width = 174
     Caption = 'Initialize'
     ParentFont = False
     TabOrder = 3
     OnClick = BInitiatilizeClick
   end
+  object GroupBox_Stock: TGroupBox
+    Left = 16
+    Height = 235
+    Top = 24
+    Width = 1112
+    Caption = 'Innitial Stock'
+    ClientHeight = 210
+    ClientWidth = 1108
+    Color = clNavy
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 4
+    object Label_Raw_material: TLabel
+      Left = 56
+      Height = 20
+      Top = 56
+      Width = 87
+      Caption = 'Raw Material'
+      Font.CharSet = ANSI_CHARSET
+      Font.Color = clWhite
+      Font.Pitch = fpVariable
+      Font.Quality = fqDraft
+      ParentFont = False
+    end
+    object Label_Base: TLabel
+      Left = 56
+      Height = 20
+      Top = 104
+      Width = 31
+      Caption = 'Base'
+      Font.CharSet = ANSI_CHARSET
+      Font.Color = clWhite
+      Font.Pitch = fpVariable
+      Font.Quality = fqDraft
+      ParentFont = False
+    end
+    object Label_Lid: TLabel
+      Left = 56
+      Height = 20
+      Top = 152
+      Width = 20
+      Caption = 'Lid'
+      Font.CharSet = ANSI_CHARSET
+      Font.Color = clWhite
+      Font.Pitch = fpVariable
+      Font.Quality = fqDraft
+      ParentFont = False
+    end
+    object Panel_Blue: TPanel
+      Left = 224
+      Height = 32
+      Top = -8
+      Width = 40
+      Color = clAqua
+      ParentBackground = False
+      ParentColor = False
+      TabOrder = 0
+    end
+    object Panel_green: TPanel
+      Left = 352
+      Height = 32
+      Top = -8
+      Width = 39
+      Color = clGreen
+      ParentBackground = False
+      ParentColor = False
+      TabOrder = 1
+    end
+    object Panel_gray: TPanel
+      Left = 472
+      Height = 32
+      Top = -8
+      Width = 39
+      Color = clGray
+      ParentBackground = False
+      ParentColor = False
+      TabOrder = 2
+    end
+    object SpinEdit_Raw_Blue: TSpinEdit
+      Left = 216
+      Height = 28
+      Top = 48
+      Width = 63
+      TabOrder = 3
+    end
+    object SpinEdit_Raw_Green: TSpinEdit
+      Left = 344
+      Height = 28
+      Top = 48
+      Width = 63
+      TabOrder = 4
+    end
+    object SpinEdit_Raw_Gray: TSpinEdit
+      Left = 464
+      Height = 28
+      Top = 48
+      Width = 63
+      TabOrder = 5
+    end
+    object SpinEdit_Base_Blue: TSpinEdit
+      Left = 216
+      Height = 28
+      Top = 96
+      Width = 63
+      TabOrder = 6
+    end
+    object SpinEdit_Base_Green: TSpinEdit
+      Left = 344
+      Height = 28
+      Top = 96
+      Width = 63
+      TabOrder = 7
+    end
+    object SpinEdit_Base_Gray: TSpinEdit
+      Left = 464
+      Height = 28
+      Top = 96
+      Width = 63
+      TabOrder = 8
+    end
+    object SpinEdit_Lid_Blue: TSpinEdit
+      Left = 216
+      Height = 28
+      Top = 144
+      Width = 63
+      TabOrder = 9
+    end
+    object SpinEdit_Lid_green: TSpinEdit
+      Left = 344
+      Height = 28
+      Top = 144
+      Width = 63
+      TabOrder = 10
+    end
+    object SpinEdit_Lid_gray: TSpinEdit
+      Left = 464
+      Height = 28
+      Top = 144
+      Width = 63
+      TabOrder = 11
+    end
+  end
+  object GroupBox_Production: TGroupBox
+    Left = 22
+    Height = 219
+    Top = 278
+    Width = 1098
+    Caption = 'Production Plan'
+    Color = clNavy
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 5
+    OnClick = GroupBox_ProductionClick
+  end
   object Timer1: TTimer
     Enabled = False
     OnTimer = Timer1Timer
-    Left = 43
-    Top = 249
+    Left = 24
+    Top = 832
   end
 end
