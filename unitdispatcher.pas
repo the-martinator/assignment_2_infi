@@ -6,17 +6,17 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  Spin, comUnit;
+  Spin, Grids, comUnit;
 
 type
 
   //***************************************
   //Production plan obtained by ERP and available in the DB
   // Enumerated: defines the type of the TTask
-  TTask_Type  = (Type_Expedition = 1, Type_Delivery, Type_Production, Type_Trash);
+  TTask_Type  = (Type_Expedition = 1, Type_Delivery, Type_Production);
 
   // TBC by a Query to DB
-  TProduction_Order = record
+    TProduction_Order = record
     part_type           : Integer;    // Part type { 0, ... 9}
     part_numbers        : Integer;    // Number of parts to be performed
     order_type          : TTask_Type;
@@ -39,6 +39,7 @@ type
    part_type           : Integer;    // Part type { 0, ... 9}
    part_position_AR    : Integer;    // Part Position in AR (if needed)
    part_destination    : Integer;    // Part destination
+   order_index         : Integer;
   end;
 
   TArray_Task = array of TTask;      // NOTE: this "type" will originate a variable to hold the output from the scheduling ("sequenciador").
@@ -64,9 +65,17 @@ type
     BStart: TButton;
     BExecute: TButton;
     BInitiatilize: TButton;
+    Button_Add_Order: TButton;
+    ComboBox1: TComboBox;
+    ComboBox2: TComboBox;
+    ComboBox3: TComboBox;
     GroupBox_log: TGroupBox;
     GroupBox_Production: TGroupBox;
     GroupBox_Stock: TGroupBox;
+    label_quantity: TLabel;
+    Label_Order: TLabel;
+    Label_Type: TLabel;
+    Label_Colour: TLabel;
     Label_Lid: TLabel;
     Label_Base: TLabel;
     Label_Raw_material: TLabel;
@@ -74,6 +83,7 @@ type
     Panel_green: TPanel;
     Panel_gray: TPanel;
     Panel_Blue: TPanel;
+    SpinEdit_Quantity: TSpinEdit;
     SpinEdit_Raw_Green: TSpinEdit;
     SpinEdit_Raw_Gray: TSpinEdit;
     SpinEdit_Base_Blue: TSpinEdit;
@@ -83,14 +93,17 @@ type
     SpinEdit_Lid_green: TSpinEdit;
     SpinEdit_Lid_gray: TSpinEdit;
     SpinEdit_Raw_Blue: TSpinEdit;
+    StringGrid1: TStringGrid;
     Timer1: TTimer;
     procedure BExecuteClick(Sender: TObject);
     procedure BInitiatilizeClick(Sender: TObject);
     procedure BStartClick(Sender: TObject);
+    procedure Button_Add_OrderClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure GroupBox_ProductionClick(Sender: TObject);
     procedure Label_RawClick(Sender: TObject);
     procedure Memo_LogChange(Sender: TObject);
+    procedure SpinEdit_Base_BlueChange(Sender: TObject);
     procedure Timer1Timer(Sender: TObject);
   private
 
@@ -194,6 +207,7 @@ begin
         task_type         := orders[idx_order].order_type;
         part_type         := orders[idx_order].part_type;
         current_operation := Stage_To_Be_Started;
+        order_index       := idx_order;
 
         part_position_AR  := -1;  // to be defined later.   STUDENTS MUST CHANGE
 
@@ -218,74 +232,57 @@ begin
 end;
 
 
-
-
 // Query DB -> Scheduling -> Connect PLC for Dispatching
 procedure TFormDispatcher.BStartClick(Sender: TObject);
+
 var
-    result           : integer;
-    production_order : TProduction_Order;
+  result: integer;
 begin
-  // ******************************************
-  // Query to DB and converts data to structures
-  // ...      to be completed by the STUDENT after SQL introduction in INFI.
-  // *******************************************
-
-
-
-
-  // ******************************************
-  // Simulating the result of the SQL query:
-  SetLength(Production_Orders, 5);                   //Let's create only some Orders to use as an example. STUDENT MUST CHANGE ACCORDING TO REQUIREMENTS
-
-  //Expedition
-
-  production_order.order_type   := Type_Expedition ;
-  production_order.part_numbers := 2;
-  production_order.part_type    := Part_Base_Blue;    //Blue Base
-  Production_Orders[0]          := production_order;  //Saving..
-
-  production_order.order_type   := Type_Expedition ;  //Expedition
-  production_order.part_numbers := 2;
-  production_order.part_type    := Part_Lid_Green;    //Green Lids
-  Production_Orders[1]          := production_order;  //Saving..
-
-  production_order.order_type     := Type_Delivery ;    //Inbounds
-  production_order.part_numbers   := 1;
-  production_order.part_type      := Part_Raw_Blue;     //Blue Raw Material
-  Production_Orders[2]            := production_order;
-
-  production_order.order_type     := Type_Production;   //Production
-  production_order.part_numbers   := 1;
-  production_order.part_type      := Part_Base_Blue;     //Blue Base
-  Production_Orders[3]            := production_order;
-  (*
-  production_order.order_type     := Type_Expedition;   //Expedition
-  production_order.part_numbers   := 1;
-  production_order.part_type      := 4;                    //Green Base
-  Production_Orders[4]            := production_order;
-  *)
-  // ******************************************
-
-  // for Scheduling
+  if Length(Production_Orders) = 0 then
+  begin
+    ShowMessage('No orders added yet!');
+    Exit;
+  end;
+  // SimpleScheduler(Production_Orders, ShopTasks);
   idx_Task_Executing := 0;
 
-  //Connecting to PLC
   result := M_connect();
-
-  if (result = 1) then
-    BStart.Caption:='Connected to PLC'
+  if result = 1 then
+    BStart.Caption := 'Connected to PLC'
   else
   begin
-    BStart.Caption:='Start';
+    BStart.Caption := 'Start';
     ShowMessage('PLC unavailable. Please try again!');
-   end;
+  end;
 end;
+
 
 procedure TFormDispatcher.FormCreate(Sender: TObject);
 begin
   SetLength(ShopTasks, 0);
   idx_Task_Executing := 0;
+
+    // Clear the memo
+  Memo_Log.Clear;
+
+  // Set grid to only the header row
+  StringGrid1.RowCount := 1;
+
+   // Titles of columns
+  StringGrid1.Cells[0, 0] := 'ID';
+  StringGrid1.Cells[1, 0] := 'Order Type';
+  StringGrid1.Cells[2, 0] := 'Part';
+  StringGrid1.Cells[3, 0] := 'Colour';
+  StringGrid1.Cells[4, 0] := 'Quantity';
+  StringGrid1.Cells[5, 0] := 'Status';
+
+  // Adjust width of columns
+  StringGrid1.ColWidths[0] := 80;
+  StringGrid1.ColWidths[1] := 100;
+  StringGrid1.ColWidths[2] := 100;
+  StringGrid1.ColWidths[3] := 100;
+  StringGrid1.ColWidths[4] := 80;
+  StringGrid1.ColWidths[5] := 100;
 end;
 
 procedure TFormDispatcher.GroupBox_ProductionClick(Sender: TObject);
@@ -299,6 +296,11 @@ begin
 end;
 
 procedure TFormDispatcher.Memo_LogChange(Sender: TObject);
+begin
+
+end;
+
+procedure TFormDispatcher.SpinEdit_Base_BlueChange(Sender: TObject);
 begin
 
 end;
@@ -328,15 +330,20 @@ begin
 
   freePosition := 1;
 
-if SpinEdit_Raw_Blue.Value + SpinEdit_Raw_Green.Value + SpinEdit_Raw_Gray.Value + SpinEdit_Base_Blue.Value + SpinEdit_Base_Green.Value + SpinEdit_Base_Gray.Value + SpinEdit_Lid_Blue.Value + SpinEdit_Lid_green.Value + SpinEdit_Lid_gray.Value < 5 then
-begin
-  for i := 1 to SpinEdit_Raw_Blue.Value do
-  begin
-    M_Initialize(freePosition, Part_Raw_Blue);
-    WAREHOUSE_Parts[freePosition] := Part_Raw_Blue;
-    freePosition := freePosition + 9; // next position
-    Sleep(1500);
-  end;
+  if SpinEdit_Raw_Blue.Value + SpinEdit_Raw_Green.Value + SpinEdit_Raw_Gray.Value + SpinEdit_Base_Blue.Value + SpinEdit_Base_Green.Value + SpinEdit_Base_Gray.Value + SpinEdit_Lid_Blue.Value + SpinEdit_Lid_green.Value + SpinEdit_Lid_gray.Value >= 5 then
+    begin
+  Memo_Log.Append('Error: Too many parts! Maximum is 4.');
+  Exit;
+       end
+  else
+     begin
+    for i := 1 to SpinEdit_Raw_Blue.Value do
+    begin
+      M_Initialize(freePosition, Part_Raw_Blue);
+      WAREHOUSE_Parts[freePosition] := Part_Raw_Blue;
+      freePosition := freePosition + 9; // next position
+      Sleep(1500);
+    end;
 
   for i := 1 to SpinEdit_Raw_Green.Value do
   begin
@@ -411,48 +418,6 @@ end;
 
 
 
-(*
-var
-    cel, r: integer;
-begin
-  // *********************************************************
-  // WAREHOUSE MANAGEMENT
-
-  // Initialization of parts in the first column of the warehouse.
-  r := M_Initialize(1, Part_Base_Blue);
-  sleep(1500);
-  r := r + M_Initialize(10, Part_Base_Blue);
-  sleep(1500);
-  r := r + M_Initialize(19, Part_Lid_Green);
-  sleep(1500);
-  r := r + M_Initialize(28, Part_Lid_Green);
-
-  if( r > 4) then
-    Memo_Log.Append('Innitiatialization with errors');
-
-
-  //Update the Warehouse according to the previous innitialization
-  SetLength(WAREHOUSE_Parts, 55);                //Parts in the warehouse   55-1 = 54 to start in 1
-  for  cel := 1 to  Length(WAREHOUSE_Parts)-1 do
-  begin
-      WAREHOUSE_Parts[cel] := 0;
-  end;
-  WAREHOUSE_Parts[1]       := Part_Base_Blue;
-  WAREHOUSE_Parts[10]      := Part_Base_Blue;
-  WAREHOUSE_Parts[19]      := Part_Lid_Green;
-  WAREHOUSE_Parts[28]      := Part_Lid_Green;
-
-
-  //Converts ProductionOrders to Tasks (staged activities)
-  SimpleScheduler(Production_Orders, ShopTasks);
-
-
-  // Starting Dispatcher Iterations over time
-  Timer1.Enabled:= true;
-end;
-
-*)
-
 // get the first position (cell) in AR that contains the "Part"
 function TFormDispatcher.GET_AR_Position (Part : integer; Warehouse : array of integer): integer;
 var
@@ -514,6 +479,12 @@ end;
 // Global Dispatcher - SIMPLEX
 procedure TFormDispatcher.Dispatcher(var tasks:TArray_Task; var idx : integer; shopfloor: TResources );
 begin
+    if idx >= Length(tasks) then
+    begin
+      Memo_Log.Append('All tasks completed!');
+      Timer1.Enabled := false;
+      Exit;
+    end;
     case tasks[idx].task_type of
 
       // Expedition
@@ -560,11 +531,6 @@ begin
                 end;
       end;
 
-      // Trash
-      Type_Trash :
-      begin
-        //todo
-      end;
 
     end;
 end;
@@ -638,6 +604,7 @@ begin
         //Done.
         Stage_Finished :
         begin
+          StringGrid1.Cells[5, task.order_index + 1] := 'Completed';
           current_operation :=  Stage_Finished;
         end;
       end;
@@ -773,6 +740,7 @@ begin
         //Done.
         Stage_Finished :
         begin
+          StringGrid1.Cells[5, task.order_index + 1] := 'Completed';
           current_operation :=  Stage_Finished;
         end;
       end;
@@ -846,12 +814,80 @@ begin
 
         Stage_Finished:
         begin
+           StringGrid1.Cells[5, task.order_index + 1] := 'Completed';
            current_operation := Stage_Finished;
         end;
 
      end;
   end;
 end;
+
+procedure TFormDispatcher.Button_Add_OrderClick(Sender: TObject);
+var
+  newRow: integer;
+  new_order: TProduction_Order;
+begin
+  // Validate
+  if (ComboBox1.Text = 'Select') or (ComboBox2.Text = 'Select') or
+     (ComboBox3.Text = 'Select') or (SpinEdit_Quantity.Value = 0) then
+  begin
+    ShowMessage('Please fill all fields before adding an order.');
+    Exit;
+  end;
+
+  // --- Build the record directly ---
+  // Order type
+  if ComboBox1.Text = 'Expedition' then
+    new_order.order_type := Type_Expedition
+  else if ComboBox1.Text = 'Inbound' then
+    new_order.order_type := Type_Delivery
+  else if ComboBox1.Text = 'Production' then
+    new_order.order_type := Type_Production;
+
+  // Quantity
+  new_order.part_numbers := SpinEdit_Quantity.Value;
+
+  // Part type (ComboBox2 = part, ComboBox3 = colour)
+  if (ComboBox2.Text = 'Raw Material') and (ComboBox3.Text = 'Blue') then
+    new_order.part_type := Part_Raw_Blue
+  else if (ComboBox2.Text = 'Raw Material') and (ComboBox3.Text = 'Green') then
+    new_order.part_type := Part_Raw_Green
+  else if (ComboBox2.Text = 'Raw Material') and (ComboBox3.Text = 'Grey') then
+    new_order.part_type := Part_Raw_Grey
+  else if (ComboBox2.Text = 'Base') and (ComboBox3.Text = 'Blue') then
+    new_order.part_type := Part_Base_Blue
+  else if (ComboBox2.Text = 'Base') and (ComboBox3.Text = 'Green') then
+    new_order.part_type := Part_Base_Green
+  else if (ComboBox2.Text = 'Base') and (ComboBox3.Text = 'Grey') then
+    new_order.part_type := Part_Base_Grey
+  else if (ComboBox2.Text = 'Lid') and (ComboBox3.Text = 'Blue') then
+    new_order.part_type := Part_Lid_Blue
+  else if (ComboBox2.Text = 'Lid') and (ComboBox3.Text = 'Green') then
+    new_order.part_type := Part_Lid_Green
+  else if (ComboBox2.Text = 'Lid') and (ComboBox3.Text = 'Grey') then
+    new_order.part_type := Part_Lid_Grey;
+
+    if new_order.part_type = 0 then
+  begin
+    ShowMessage('Invalid part/colour combination!');
+    Exit;
+  end;
+
+  // Add to the Production_Orders array
+  SetLength(Production_Orders, Length(Production_Orders) + 1);
+  Production_Orders[High(Production_Orders)] := new_order;
+
+  // Grid is just for display
+  newRow := StringGrid1.RowCount;
+  StringGrid1.RowCount := newRow + 1;
+  StringGrid1.Cells[0, newRow] := IntToStr(newRow);
+  StringGrid1.Cells[1, newRow] := ComboBox1.Text;
+  StringGrid1.Cells[2, newRow] := ComboBox2.Text;
+  StringGrid1.Cells[3, newRow] := ComboBox3.Text;
+  StringGrid1.Cells[4, newRow] := IntToStr(SpinEdit_Quantity.Value);
+  StringGrid1.Cells[5, newRow] := 'Pending';
+end;
+
 
 end.
 
