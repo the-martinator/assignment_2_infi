@@ -69,6 +69,7 @@ type
     ComboBox1: TComboBox;
     ComboBox2: TComboBox;
     ComboBox3: TComboBox;
+    GroupBox_Monitor: TGroupBox;
     GroupBox_controls: TGroupBox;
     GroupBox_log: TGroupBox;
     GroupBox_Production: TGroupBox;
@@ -95,12 +96,14 @@ type
     SpinEdit_Lid_gray: TSpinEdit;
     SpinEdit_Raw_Blue: TSpinEdit;
     StringGrid1: TStringGrid;
+    StringGrid2: TStringGrid;
     Timer1: TTimer;
     procedure BExecuteClick(Sender: TObject);
     procedure BInitiatilizeClick(Sender: TObject);
     procedure BStartClick(Sender: TObject);
     procedure Button_Add_OrderClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure GroupBox_MonitorClick(Sender: TObject);
     procedure GroupBox_ProductionClick(Sender: TObject);
     procedure Label_RawClick(Sender: TObject);
     procedure Memo_LogChange(Sender: TObject);
@@ -116,6 +119,7 @@ type
     function GET_AR_Position (Part : integer; Warehouse : array of integer): integer;
     function GET_AR_Free_Position(Warehouse : array of integer): integer;
     procedure SET_AR_Position (idx : integer; Part : integer; var Warehouse : array of integer);
+    procedure UpdateMonitoringGrid;
 
   end;
 
@@ -150,6 +154,10 @@ var
 
   // Status of each cell in the warehouse.
   WAREHOUSE_Parts           : array of integer;         //warehouse parts in each position
+
+  Monitoring_Received     : array[1..9] of integer;
+  Monitoring_Expedited    : array[1..9] of integer;
+  Monitoring_InProduction : array[1..9] of integer;
 
 implementation
 
@@ -244,7 +252,6 @@ begin
     ShowMessage('No orders added yet!');
     Exit;
   end;
-  // SimpleScheduler(Production_Orders, ShopTasks);
   idx_Task_Executing := 0;
 
   result := M_connect();
@@ -259,6 +266,9 @@ end;
 
 
 procedure TFormDispatcher.FormCreate(Sender: TObject);
+
+var
+  i : integer = 0;
 begin
   SetLength(ShopTasks, 0);
   idx_Task_Executing := 0;
@@ -284,6 +294,39 @@ begin
   StringGrid1.ColWidths[3] := 100;
   StringGrid1.ColWidths[4] := 80;
   StringGrid1.ColWidths[5] := 100;
+
+
+  // Initialize monitoring counters
+  for i := 1 to 9 do
+  begin
+    Monitoring_Received[i]     := 0;
+    Monitoring_Expedited[i]    := 0;
+    Monitoring_InProduction[i] := 0;
+  end;
+
+  // Monitoring grid setup (StringGrid2)
+  StringGrid2.RowCount := 10; // 1 header + 9 part types
+  StringGrid2.ColCount := 5;
+  StringGrid2.Cells[0, 0] := 'Part';
+  StringGrid2.Cells[1, 0] := 'In Warehouse';
+  StringGrid2.Cells[2, 0] := 'Received';
+  StringGrid2.Cells[3, 0] := 'In Production';
+  StringGrid2.Cells[4, 0] := 'Expedited';
+
+  StringGrid2.Cells[0, 1] := 'Raw Blue';
+  StringGrid2.Cells[0, 2] := 'Raw Green';
+  StringGrid2.Cells[0, 3] := 'Raw Grey';
+  StringGrid2.Cells[0, 4] := 'Base Blue';
+  StringGrid2.Cells[0, 5] := 'Base Green';
+  StringGrid2.Cells[0, 6] := 'Base Grey';
+  StringGrid2.Cells[0, 7] := 'Lid Blue';
+  StringGrid2.Cells[0, 8] := 'Lid Green';
+  StringGrid2.Cells[0, 9] := 'Lid Grey';
+end;
+
+procedure TFormDispatcher.GroupBox_MonitorClick(Sender: TObject);
+begin
+
 end;
 
 procedure TFormDispatcher.GroupBox_ProductionClick(Sender: TObject);
@@ -439,7 +482,7 @@ begin
   end;
 end;
 
-// Função que permite obter a primeira posição vazia da primeira coluna do armazém
+// Get first free position in first column.
 function TFormDispatcher.GET_AR_Free_Position(Warehouse : array of integer): integer;
 var
     i : integer;
@@ -478,6 +521,8 @@ begin
   if(Length(ShopTasks)>0) then begin
     Dispatcher(ShopTasks, idx_Task_Executing, ShopResources);
   end;
+
+  UpdateMonitoringGrid;
 end;
 
 
@@ -504,7 +549,11 @@ begin
 
           // Next Operation to be executed.
           if(tasks[idx].current_operation = Stage_Finished) then
+          begin
+            StringGrid1.Cells[5, tasks[idx].order_index + 1] := 'Completed';
+            Memo_Log.Append('Expedition Order ' + IntToStr(idx+1) + ' completed.');
             inc(idx_Task_Executing);
+          end;
         end;
       end;
 
@@ -519,7 +568,11 @@ begin
 
                   // Next Operation to be executed.
                   if(tasks[idx].current_operation = Stage_Finished) then
+                    begin
+                    StringGrid1.Cells[5, tasks[idx].order_index + 1] := 'Completed';
+                    Memo_Log.Append('Production Order ' + IntToStr(idx+1) + ' completed.');
                     inc(idx_Task_Executing);
+                    end;
                 end;
       end;
 
@@ -534,7 +587,12 @@ begin
 
                   // Next Operation to be executed.
                   if(tasks[idx].current_operation = Stage_Finished) then
+                    begin
+                    StringGrid1.Cells[5, tasks[idx].order_index + 1] := 'Completed';
+                    Memo_Log.Append('Delivery Order ' + IntToStr(idx+1) + ' completed.');
                     inc(idx_Task_Executing);
+                    end;
+
                 end;
       end;
 
@@ -605,14 +663,13 @@ begin
         Stage_Clear_Pos_AR :
         begin
           SET_AR_Position(Part_Position_AR, 0, WAREHOUSE_Parts);
+          inc(Monitoring_Expedited[Part_Type]);
           current_operation :=  Stage_Finished;
         end;
 
         //Done.
         Stage_Finished :
         begin
-          Memo_Log.Append('Expedition order ' + IntToStr(task.order_index+1) + ' completed successfully.');
-          StringGrid1.Cells[5, task.order_index + 1] := 'Completed';
           current_operation :=  Stage_Finished;
         end;
       end;
@@ -679,13 +736,14 @@ begin
         Stage_Clear_Pos_AR :
         begin
           SET_AR_Position(Part_Position_AR, 0, WAREHOUSE_Parts);
+          inc(Monitoring_InProduction[Part_Type]);
           current_operation :=  Stage_Production;
         end;
 
         //Send a part to production
         Stage_Production:
         begin
-          if (shopfloor.AR_Out_Part = (Part_Type - 3)) or (shopfloor.AR_Out_Part = (Part_Type - 6))  then
+          if (shopfloor.AR_Out_Part <> 0) and ((shopfloor.AR_Out_Part = (Part_Type - 3)) or (shopfloor.AR_Out_Part = (Part_Type - 6)))  then
           begin
             if Part_Destination = 1 then
               Memo_Log.Append('Producing Base')
@@ -740,15 +798,14 @@ begin
         //Update the Position in the AR
         Stage_Update_Pos_AR :
         begin
-          SET_AR_Position(Part_Position_AR, Part_Type, WAREHOUSE_Parts);    //is this right?
+          SET_AR_Position(Part_Position_AR, Part_Type, WAREHOUSE_Parts);
+          dec(Monitoring_InProduction[Part_Type]);
           current_operation :=  Stage_Finished;
         end;
 
         //Done.
         Stage_Finished :
         begin
-          Memo_Log.Append('Production order ' + IntToStr(task.order_index+1) + ' completed successfully.');
-          StringGrid1.Cells[5, task.order_index + 1] := 'Completed';
           current_operation :=  Stage_Finished;
         end;
       end;
@@ -756,7 +813,7 @@ begin
 end;
 
 // Procedure that executes a Delivery order.
-procedure TFormDispatcher.Execute_Delivery_Order(var task:TTask; shopfloor: TResources ); //por etapas no inicio
+procedure TFormDispatcher.Execute_Delivery_Order(var task:TTask; shopfloor: TResources );
 var
     r : integer;
 begin
@@ -771,29 +828,29 @@ begin
 
         Stage_Get_Free_Position:
 
-                begin
-                   Part_Position_AR := GET_AR_Free_Position(WAREHOUSE_Parts);
+               begin
+               Part_Position_AR := GET_AR_Free_Position(WAREHOUSE_Parts);
 
-                   if (Part_Position_AR > 0) then
-                   begin
-                   Memo_Log.Append('Free warehouse position found: ' + IntToStr(Part_Position_AR));
-                      //Found space
-                      r := M_Do_Inbound(Part_Type);
-                      if (r = 1) then
-                      begin
-                         current_operation := Stage_Inbound;
-                      end;
-                   end
-                   else
-                   begin
-                      Memo_Log.Append('Warehouse is full!');
-                   end;
-                end;
+               if (Part_Position_AR > 0) then
+               begin
+               Memo_Log.Append('Free warehouse position found: ' + IntToStr(Part_Position_AR));
+                  //Found space
+                  r := M_Do_Inbound(Part_Type);
+                  if (r = 1) then
+                  begin
+                     current_operation := Stage_Inbound;
+                  end;
+               end
+               else
+               begin
+                  Memo_Log.Append('Warehouse is full!');
+               end;
+               end;
 
          Stage_Inbound :
         begin
            Memo_Log.Append('Waiting for part to arrive on input conveyor...');
-          if (shopfloor.AR_In_Part <> 0) then  // just wait for any part to arrive
+          if (shopfloor.AR_In_Part <> 0) then
           begin
           Memo_Log.Append('Part detected on input conveyor. Proceeding to load.');
           current_operation := Stage_Load;
@@ -817,6 +874,7 @@ begin
         Stage_Update_Pos_AR_1:
         begin
            SET_AR_Position(Part_Position_AR, Part_Type, WAREHOUSE_Parts);
+           inc(Monitoring_Received[Part_Type]);
            Memo_Log.Append('Inbound complete. Part ' + IntToStr(Part_Type) + ' stored at warehouse position ' + IntToStr(Part_Position_AR));
 
            current_operation := Stage_Finished;
@@ -824,8 +882,6 @@ begin
 
         Stage_Finished:
         begin
-           Memo_Log.Append('Delivery order ' + IntToStr(task.order_index+1) + ' completed successfully.');
-           StringGrid1.Cells[5, task.order_index + 1] := 'Completed';
            current_operation := Stage_Finished;
         end;
 
@@ -846,7 +902,6 @@ begin
     Exit;
   end;
 
-  // --- Build the record directly ---
   // Order type
   if ComboBox1.Text = 'Expedition' then
     new_order.order_type := Type_Expedition
@@ -858,7 +913,7 @@ begin
   // Quantity
   new_order.part_numbers := SpinEdit_Quantity.Value;
 
-  // Part type (ComboBox2 = part, ComboBox3 = colour)
+  // Part type
   if (ComboBox2.Text = 'Raw Material') and (ComboBox3.Text = 'Blue') then
     new_order.part_type := Part_Raw_Blue
   else if (ComboBox2.Text = 'Raw Material') and (ComboBox3.Text = 'Green') then
@@ -888,7 +943,7 @@ begin
   SetLength(Production_Orders, Length(Production_Orders) + 1);
   Production_Orders[High(Production_Orders)] := new_order;
 
-  // Grid is just for display
+  // Grid, for display
   newRow := StringGrid1.RowCount;
   StringGrid1.RowCount := newRow + 1;
   StringGrid1.Cells[0, newRow] := IntToStr(newRow);
@@ -897,6 +952,24 @@ begin
   StringGrid1.Cells[3, newRow] := ComboBox3.Text;
   StringGrid1.Cells[4, newRow] := IntToStr(SpinEdit_Quantity.Value);
   StringGrid1.Cells[5, newRow] := 'Pending';
+end;
+
+procedure TFormDispatcher.UpdateMonitoringGrid;
+var
+  p, i, count: integer;
+begin
+  for p := 1 to 9 do
+  begin
+    // 3.1 — count occurrences of part type p in WAREHOUSE_Parts
+    count := 0;
+    for i := 1 to Length(WAREHOUSE_Parts)-1 do
+      if WAREHOUSE_Parts[i] = p then inc(count);
+
+    StringGrid2.Cells[1, p] := IntToStr(count);
+    StringGrid2.Cells[2, p] := IntToStr(Monitoring_Received[p]);
+    StringGrid2.Cells[3, p] := IntToStr(Monitoring_InProduction[p]);
+    StringGrid2.Cells[4, p] := IntToStr(Monitoring_Expedited[p]);
+  end;
 end;
 
 
