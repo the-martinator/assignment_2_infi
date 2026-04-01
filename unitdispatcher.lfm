@@ -4,8 +4,8 @@ object FormDispatcher: TFormDispatcher
   Top = 107
   Width = 1148
   Caption = 'Dispatcher'
-  ClientHeight = 0
-  ClientWidth = 0
+  ClientHeight = 949
+  ClientWidth = 1148
   DesignTimePPI = 120
   LCLVersion = '4.4.0.0'
   OnCreate = FormCreate

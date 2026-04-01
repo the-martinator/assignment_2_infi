@@ -30,7 +30,7 @@ type
   //***************************************
   // Dispatcher Execution
   // Enumerated: defines all stages of TTasks
-  TStage      = (Stage_To_Be_Started = 1, Stage_GetPart, Stage_Unload, Stage_To_AR_Out, Stage_wait, Stage_Clear_Pos_AR,Stage_Production, Stage_Load, Stage_Update_Pos_AR, Stage_Finished, Stage_GetPosition, Stage_Inbound, Stage_Get_Free_Position, Stage_Update_Pos_AR_1);   //TbC
+  TStage      = (Stage_To_Be_Started = 1, Stage_GetPart, Stage_Unload, Stage_To_AR_Out, Stage_wait, Stage_Clear_Pos_AR,Stage_Production, Stage_Load, Stage_Update_Pos_AR, Stage_Finished, Stage_GetPosition, Stage_Inbound, Stage_Get_Free_Position, Stage_Update_Pos_AR_1);
 
   // Data structure for holding one Task (OE, OD, OP)
   TTask = record
@@ -40,6 +40,10 @@ type
    part_position_AR    : Integer;    // Part Position in AR (if needed)
    part_destination    : Integer;    // Part destination
    order_index         : Integer;
+   is_grey             : Boolean;    // true if grey part moving in the factory
+   time_start          : QWord;
+   time_wait_AR        : QWord;
+
   end;
 
   TArray_Task = array of TTask;      // NOTE: this "type" will originate a variable to hold the output from the scheduling ("sequenciador").
@@ -157,7 +161,12 @@ var
 
   Monitoring_Received     : array[1..9] of integer;
   Monitoring_Expedited    : array[1..9] of integer;
-  Monitoring_InProduction : array[1..9] of integer;
+  Monitoring_InProduction : array[1..9] of integer;  // for counting how many parts recieved, expedtied and in production at any time
+
+  Total_Cost : Double = 0.0;
+  Active_Grey_Parts : integer = 0;
+  AR_Locked : boolean = False; //locks the use of the warehouse
+  Conveyor_Busy_until : QWord = 0;  //prevents loading on the main conveyor belt while it's busy
 
 implementation
 
@@ -202,11 +211,17 @@ end;
 procedure SimpleScheduler(var orders: TArray_Production_Order; var tasks:TArray_Task );
 var
     current_task     : TTask;
-    idx_order        : integer;
+    idx_order, i        : integer;
     numb_tasks_total : integer = 0;       // total number of tasks created in "tasks"
     numb_same_task   : integer = 0;
 
+    GreenTasks : array of TTask;
+    OtherTasks : array of TTask; //separate green from other tasks, so they can be given priority
+
 begin
+  SetLength(GreenTasks, 0);
+  SetLength(OtherTasks, 0);
+
   for idx_order:= 0 to Length(orders)-1 do
   begin
       with current_task do
@@ -220,7 +235,12 @@ begin
 
         part_position_AR  := -1;  // to be defined later.   STUDENTS MUST CHANGE
 
-        if( part_type < Part_Lid_Blue )then
+        // Innitialize new variables
+        is_grey    := False;
+        time_start        := 0;
+        time_wait_ar      := 0;
+
+         if( part_type < Part_Lid_Blue )then
         begin
              part_destination  := 1;     // if bases (Exit 1 or Cell 1)
         end else
@@ -229,14 +249,30 @@ begin
         end;
 
         //Create  orders[idx_order].part_numbers of the same TTask for Dispatcher.
-        numb_tasks_total :=  Length(tasks);
-        SetLength(tasks,  numb_tasks_total + orders[idx_order].part_numbers);
+
+        // numb_tasks_total :=  Length(tasks);
+        //SetLength(tasks,  numb_tasks_total + orders[idx_order].part_numbers);
         for numb_same_task := 0 to orders[idx_order].part_numbers-1 do
         begin
-            tasks[numb_tasks_total+numb_same_task] := current_task;
+          if (part_type = Part_Raw_Green) or (Part_Type = Part_Base_Green) or (Part_Type = Part_Lid_Green) then
+          begin
+            SetLength(GreenTasks, Length(GreenTasks)+1);
+            GreenTasks[high(GreenTasks)] := current_task;
+          end
+          else
+          begin
+            SetLength(OtherTasks,Length(OtherTasks)+1);
+            OtherTasks[high(OtherTasks)] := current_task;
+          end;
         end;
       end;
   end;
+  //Join everything in the original array
+  SetLength(tasks, Length(GreenTasks) + Length(OtherTasks));
+  for i := 0 to High(GreenTasks) do
+      tasks[i] := GreenTasks[i];
+  for i:= 0 to High(OtherTasks) do
+      tasks[Length(greenTasks) + i] := OtherTasks[i];
 
 end;
 
@@ -252,7 +288,11 @@ begin
     ShowMessage('No orders added yet!');
     Exit;
   end;
-  idx_Task_Executing := 0;
+ // idx_Task_Executing := 0;
+ Total_Cost := 0.0;
+ Active_Grey_Parts := 0;
+ AR_Locked := False;
+ Conveyor_Busy_Until := 0;
 
   result := M_connect();
   if result = 1 then
@@ -305,7 +345,7 @@ begin
   end;
 
   // Monitoring grid setup (StringGrid2)
-  StringGrid2.RowCount := 10; // 1 header + 9 part types
+  StringGrid2.RowCount := 10;
   StringGrid2.ColCount := 5;
   StringGrid2.Cells[0, 0] := 'Part';
   StringGrid2.Cells[1, 0] := 'In Warehouse';
@@ -376,7 +416,7 @@ begin
 
   if SpinEdit_Raw_Blue.Value + SpinEdit_Raw_Green.Value + SpinEdit_Raw_Gray.Value + SpinEdit_Base_Blue.Value + SpinEdit_Base_Green.Value + SpinEdit_Base_Gray.Value + SpinEdit_Lid_Blue.Value + SpinEdit_Lid_green.Value + SpinEdit_Lid_gray.Value >= 5 then
     begin
-  Memo_Log.Append('Error: Too many parts! Maximum is 4.');
+  Memo_Log.Append('Error: Too many parts! Maximum is 4.');  //still considering the restriction of only using first column
   Exit;
        end
   else
@@ -472,6 +512,7 @@ function TFormDispatcher.GET_AR_Position (Part : integer; Warehouse : array of i
 var
     i : integer;
 begin
+  result := -1; //if no parts present
   for i := 0 to Length(Warehouse)-1 do
   begin
       if Warehouse[i] = Part then
@@ -519,7 +560,7 @@ begin
 
   //Dispatcher executing per cycle.
   if(Length(ShopTasks)>0) then begin
-    Dispatcher(ShopTasks, idx_Task_Executing, ShopResources);
+    Dispatcher(ShopTasks, ShopResources);
   end;
 
   UpdateMonitoringGrid;
