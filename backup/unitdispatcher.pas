@@ -116,7 +116,7 @@ type
   private
 
   public
-    procedure Dispatcher(var tasks:TArray_Task; var idx : integer; shopfloor: TResources );
+    procedure Dispatcher(var tasks:TArray_Task; shopfloor: TResources );
     procedure Execute_Expedition_Order(var task:TTask; shopfloor: TResources );
     procedure Execute_Production_Order(var task:TTask; shopfloor: TResources );
     procedure Execute_Delivery_Order(var task:TTask; shopfloor: TResources );
@@ -560,7 +560,7 @@ begin
 
   //Dispatcher executing per cycle.
   if(Length(ShopTasks)>0) then begin
-    Dispatcher(ShopTasks, idx_Task_Executing, ShopResources);
+    Dispatcher(ShopTasks, ShopResources);
   end;
 
   UpdateMonitoringGrid;
@@ -568,14 +568,31 @@ end;
 
 
 
-// Global Dispatcher - SIMPLEX
-procedure TFormDispatcher.Dispatcher(var tasks:TArray_Task; var idx : integer; shopfloor: TResources );
+ (* Global Dispatcher - SIMPLEX, now supporting parallel tasks
+procedure TFormDispatcher.Dispatcher(var tasks:TArray_Task; shopfloor: TResources );
+var
+    i: integer;
+    Finished : boolean;
 begin
-    if idx >= Length(tasks) then
+  Finished := True;
+
+    for i := 0 to Length(tasks)-1 do
     begin
-      Memo_Log.Append('All tasks completed!');
-      Timer1.Enabled := false;
-      Exit;
+      if tasks[i].current_operation <> Stage_Finished then
+      begin
+        Finished := False;
+        if tasks[i].current_operation = Stage_To_Be_Started then
+            begin
+                // Se for uma peça cinzenta
+                if (tasks[i].part_type = Part_Raw_Grey) or (tasks[i].part_type = Part_Base_Grey) or (tasks[i].part_type = Part_Lid_Grey) then
+                begin
+                   if ActiveGreyParts >= 1 then
+                     Continue; // Salta esta tarefa porque já há um cinza ativo. Impede a tarefa de arrancar.
+
+                   tasks[i].is_grey_active := True;
+                   Inc(ActiveGreyParts);
+
+      end;
     end;
     Memo_Log.Append('--- Cycle: Task ' + IntToStr(idx+1) + ' of ' + IntToStr(Length(tasks)) + ' ---');
     case tasks[idx].task_type of
@@ -629,7 +646,7 @@ begin
                   // Next Operation to be executed.
                   if(tasks[idx].current_operation = Stage_Finished) then
                     begin
-                    StringGrid1.Cells[5, tasks[idx].order_index + 1] := 'Completed';
+                    StringGrid1.Cells[5, tasks[idx].orEder_index + 1] := 'Completed';
                     Memo_Log.Append('Delivery Order ' + IntToStr(idx+1) + ' completed.');
                     inc(idx_Task_Executing);
                     end;
@@ -640,6 +657,66 @@ begin
 
     end;
 end;
+*)
+
+// Global Dispatcher - SIMPLEX, now supporting parallel tasks
+procedure TFormDispatcher.Dispatcher(var tasks:TArray_Task; shopfloor: TResources );
+var
+  i: integer;
+  Finished: Boolean;
+  taskTypeName : string;
+begin
+    Finished := True;
+
+    // Go through every tak in the array
+    for i := 0 to Length(tasks) - 1 do
+    begin
+        if tasks[i].current_operation <> Stage_Finished then
+        begin
+            Finished := False;
+
+            // Case for grey parts
+            if tasks[i].current_operation = Stage_To_Be_Started then
+            begin
+                if (tasks[i].part_type = Part_Raw_Grey) or (tasks[i].part_type = Part_Base_Grey) or (tasks[i].part_type = Part_Lid_Grey) then
+                begin
+                   if Active_Grey_Parts >= 1 then
+                     Continue; //don't start task
+
+                   tasks[i].is_grey := True;
+                   Inc(Active_Grey_Parts);
+                end;
+            end;
+
+            // Execute a task according to its type
+            case tasks[i].task_type of
+              Type_Expedition : Execute_Expedition_Order(tasks[i], shopfloor);
+              Type_Production : Execute_Production_Order(tasks[i], shopfloor);
+              Type_Delivery   : Execute_Delivery_Order(tasks[i], shopfloor);
+            end;
+
+            // Check if this task just finished after execution
+            if tasks[i].current_operation = Stage_Finished then
+            begin
+                StringGrid1.Cells[5, tasks[i].order_index + 1] := 'Completed';
+                case tasks[i].task_type of
+                  Type_Expedition : Memo_Log.Append('Expedition Order ' + IntToStr(i+1) + ' completed.');
+                  Type_Production : Memo_Log.Append('Production Order ' + IntToStr(i+1) + ' completed.');
+                  Type_Delivery   : Memo_Log.Append('Delivery Order ' + IntToStr(i+1) + ' completed.');
+                end;
+            end;
+        end;
+    end;
+
+    // Se varremos todas e todas estão no Stage_Finished:
+    if Finished then
+    begin
+      Memo_Log.Append('All tasks completed!');
+      Memo_Log.Append('--- TOTAL COST OF PRODUCTION: ' + FloatToStr(Total_Cost) + ' EUR ---');
+      Timer1.Enabled := false;
+      SetLength(ShopTasks, 0); // Empty the aray so as not to repeat logs
+    end;
+end;
 
 
 // Procedure that executes an expedition order according to SLIDE 19 of T classes.
@@ -647,7 +724,6 @@ procedure TFormDispatcher.Execute_Expedition_Order(var task:TTask; shopfloor: TR
 var
     r : integer;
 begin
-  //  TStage      = (Stage_To_Be_Started = 1, Stage_GetPart, Stage_Unload, Stage_To_AR_Out, Stage_Clear_Pos_AR, Stage_Finished);   //TbC
 
   with task do
   begin
@@ -662,13 +738,14 @@ begin
         // Getting a Position from the Warehouse
         Stage_GetPart :
         begin
-          if(shopfloor.AR_free) then  //AR is free
+          if(shopfloor.AR_free) and not AR_Locked and (GetTickCount64() > Conveyor_Busy_Until) then  //AR is free
           begin
             Part_Position_AR := GET_AR_Position(Part_Type, WAREHOUSE_Parts);
-            Memo_Log.Append('Looking for part ' + IntToStr(Part_Type) + ' -> found at position ' + IntToStr(Part_Position_AR));
 
             if( Part_Position_AR > 0 ) then
             begin
+              AR_Locked := True;
+              Memo_Log.Append('Looking for part ' + IntToStr(Part_Type) + ' -> found at position ' + IntToStr(Part_Position_AR));
                current_operation :=  Stage_Unload;
             end
             else
@@ -696,7 +773,9 @@ begin
             r := M_Do_Expedition(Part_Destination);          // Expedition
             Memo_Log.Append('Waiting for part ' + IntToStr(Part_Type) + ' on output conveyor...');
             if( r = 1) then                                  // sucess
-             current_operation :=  Stage_Clear_Pos_AR;
+                Conveyor_Busy_Until := GetTickCount64() + 8000; //prevents a new part from being sent to the conveyor right away, avoising collisions
+               AR_Locked := False;
+               current_operation :=  Stage_Clear_Pos_AR;
           end;
         end;
 
@@ -711,6 +790,12 @@ begin
         //Done.
         Stage_Finished :
         begin
+          if is_grey then
+          begin
+            Dec(Active_grey_parts);
+            is_grey := False;
+          end;
+          Total_Cost := Total_Cost + 3.0; // 3€ per expedition task
           current_operation :=  Stage_Finished;
         end;
       end;
@@ -723,8 +808,6 @@ procedure TFormDispatcher.Execute_Production_Order(var task:TTask; shopfloor: TR
 var
     r : integer;
 begin
-  //  TStage      = (Stage_To_Be_Started = 1, Stage_GetPart, Stage_Unload, Stage_Clear_Pos_AR,
-  // Stage_Production, Stage_Load, Stage_Update_Pos_AR, Stage_Finished);
 
   with task do
   begin
@@ -739,20 +822,17 @@ begin
         // Getting a Position from the Warehouse
         Stage_GetPart :
         begin
-          if(shopfloor.AR_free) then  //AR is free
+          if(shopfloor.AR_free) and not AR_locked and (GetTickCount64() > Conveyor_Busy_Until) then  //AR is free
           begin
             Memo_Log.Append('Looking for raw part at position ' + IntToStr(Part_Position_AR));
             if Part_Destination = 1 then
-            begin
-               Part_Position_AR := GET_AR_Position((Part_Type - 3), WAREHOUSE_Parts);
-
-            end
+               Part_Position_AR := GET_AR_Position((Part_Type - 3), WAREHOUSE_Parts)
             else
-            begin
                 Part_Position_AR := GET_AR_Position(Part_Type - 6, WAREHOUSE_Parts); //Raw Part to Get
-            end;
+
             if( Part_Position_AR > 0 ) then
             begin
+              AR_Locked := True;
                current_operation :=  Stage_Unload;
             end
             else
@@ -795,6 +875,9 @@ begin
             Memo_Log.Append('Production result: ' + IntToStr(r) + ' | Destination: ' + IntToStr(Part_Destination) + ' | Part type: ' + IntToStr(part_type));
 
             if (r = 1) then
+               Conveyor_Busy_Until := GetTickCount64() + 8000;
+              AR_Locked := False;
+              time_start := GetTickCount64();
               current_operation := Stage_Wait;
           end;
         end;
@@ -802,8 +885,13 @@ begin
         Stage_Wait:
         begin
         Memo_Log.Append('Waiting for produced part to arrive on input conveyor...');
-        if (shopfloor.AR_In_Part <> 0) then
+        if (shopfloor.AR_In_Part = Part_Type) then //task only advances if part type is the correct one
         begin
+          time_spent := (GetTickCount64() - time_start) / 1000.0;
+            Total_Cost := Total_Cost + (time_spent * 2.0);
+
+            time_wait_ar := GetTickCount64();
+
           current_operation := Stage_GetPosition;
         end;
       end;
@@ -812,11 +900,13 @@ begin
         // Getting a Free Position from the Warehouse
         Stage_GetPosition :
         begin
-          if(shopfloor.AR_free) and (shopfloor.AR_In_Part <> 0) then  //AR is free
+          if(shopfloor.AR_free) and not AR_Locked and (shopfloor.AR_In_Part = Part_Type) then  //AR is free
           begin
+            Part_Position_AR := GET_AR_Free_Position(WAREHOUSE_Parts);
             Memo_Log.append('Position acquired.');
             if( Part_Position_AR > 0 ) then
             begin
+               AR_Locked := True;
                current_operation :=  Stage_Load;
             end
             else
@@ -833,6 +923,8 @@ begin
           r := M_Load(Part_Position_AR);
 
           if ( r = 1 ) then                                 //sucess
+             time_spent := (GetTickCount64() - time_wait_ar) / 1000.0;
+             Total_Cost := Total_Cost + (time_spent * 6.0);
              current_operation :=  Stage_Update_Pos_AR;
         end;
 
@@ -840,6 +932,7 @@ begin
         Stage_Update_Pos_AR :
         begin
           SET_AR_Position(Part_Position_AR, Part_Type, WAREHOUSE_Parts);
+          AR_Locked := False;
           dec(Monitoring_InProduction[Part_Type]);
           current_operation :=  Stage_Finished;
         end;
@@ -847,6 +940,11 @@ begin
         //Done.
         Stage_Finished :
         begin
+          if is_grey then
+          begin
+            Dec(Active_Grey_Parts);
+            is_grey := False;
+          end;
           current_operation :=  Stage_Finished;
         end;
       end;
@@ -857,6 +955,7 @@ end;
 procedure TFormDispatcher.Execute_Delivery_Order(var task:TTask; shopfloor: TResources );
 var
     r : integer;
+    time_spent: double;
 begin
   with task do
   begin
@@ -891,24 +990,36 @@ begin
          Stage_Inbound :
         begin
            Memo_Log.Append('Waiting for part to arrive on input conveyor...');
-          if (shopfloor.AR_In_Part <> 0) then
+          if (shopfloor.AR_In_Part = Part_type) then
           begin
           Memo_Log.Append('Part detected on input conveyor. Proceeding to load.');
-          current_operation := Stage_Load;
+          time_wait_ar := GetTickCount64();
+          current_operation := Stage_GetPosition;
           end;
         end;
+
+         Stage_GetPosition:
+        begin
+           if (shopfloor.AR_free) and not AR_Locked and (shopfloor.AR_In_Part = Part_Type) then
+           begin
+              AR_Locked := True;
+              current_operation := Stage_Load;
+           end;
+        end;
+
 
         // Wait for part
         Stage_Load:
         begin
-           if (shopfloor.AR_free) and (shopfloor.AR_In_Part <> 0) then
-           begin
               Memo_Log.Append('Loading inbound part into warehouse position ' + IntToStr(Part_Position_AR));
               r := M_Load(Part_Position_AR);
 
               if (r = 1) then
-                 current_operation := Stage_Update_Pos_AR_1;
-           end;
+              begin
+              time_spent := (GetTickCount64() - time_wait_ar) / 1000.0;
+              Total_Cost := Total_Cost + (time_spent * 6.0);
+              current_operation := Stage_Update_Pos_AR_1;
+              end;
         end;
 
         // Update the warehouse position.
@@ -917,12 +1028,23 @@ begin
            SET_AR_Position(Part_Position_AR, Part_Type, WAREHOUSE_Parts);
            inc(Monitoring_Received[Part_Type]);
            Memo_Log.Append('Inbound complete. Part ' + IntToStr(Part_Type) + ' stored at warehouse position ' + IntToStr(Part_Position_AR));
-
+           AR_Locked := False;
            current_operation := Stage_Finished;
         end;
 
         Stage_Finished:
         begin
+             if Part_Type = Part_Raw_Green then
+             Total_Cost := Total_Cost + 4.0
+           else if (Part_Type = Part_Raw_Blue) or (Part_Type = Part_Raw_Grey) then
+             Total_Cost := Total_Cost + 1.0;
+
+             if is_grey then
+           begin
+             Dec(Active_Grey_Parts);
+             is_grey := False;
+           end;
+
            current_operation := Stage_Finished;
         end;
 
@@ -1001,7 +1123,7 @@ var
 begin
   for p := 1 to 9 do
   begin
-    // 3.1 — count occurrences of part type p in WAREHOUSE_Parts
+
     count := 0;
     for i := 1 to Length(WAREHOUSE_Parts)-1 do
       if WAREHOUSE_Parts[i] = p then inc(count);
