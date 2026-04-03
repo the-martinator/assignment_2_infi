@@ -168,6 +168,10 @@ var
   AR_Locked : boolean = False; //locks the use of the warehouse
   Conveyor_Busy_until : QWord = 0;  //prevents loading on the main conveyor belt while it's busy
 
+  Cell1_Times : array of double;
+  Cell2_Times : array of doubles;
+  AR_Wait_Times : array of doubles;
+
 implementation
 
 {$R *.lfm}
@@ -293,6 +297,9 @@ begin
  Active_Grey_Parts := 0;
  AR_Locked := False;
  Conveyor_Busy_Until := 0;
+ SetLength(Cell1_Times, 0);
+SetLength(Cell2_Times, 0);
+SetLength(AR_Wait_Times, 0);
 
   result := M_connect();
   if result = 1 then
@@ -568,103 +575,14 @@ end;
 
 
 
- (* Global Dispatcher - SIMPLEX, now supporting parallel tasks
-procedure TFormDispatcher.Dispatcher(var tasks:TArray_Task; shopfloor: TResources );
-var
-    i: integer;
-    Finished : boolean;
-begin
-  Finished := True;
-
-    for i := 0 to Length(tasks)-1 do
-    begin
-      if tasks[i].current_operation <> Stage_Finished then
-      begin
-        Finished := False;
-        if tasks[i].current_operation = Stage_To_Be_Started then
-            begin
-                // Se for uma peça cinzenta
-                if (tasks[i].part_type = Part_Raw_Grey) or (tasks[i].part_type = Part_Base_Grey) or (tasks[i].part_type = Part_Lid_Grey) then
-                begin
-                   if ActiveGreyParts >= 1 then
-                     Continue; // Salta esta tarefa porque já há um cinza ativo. Impede a tarefa de arrancar.
-
-                   tasks[i].is_grey_active := True;
-                   Inc(ActiveGreyParts);
-
-      end;
-    end;
-    Memo_Log.Append('--- Cycle: Task ' + IntToStr(idx+1) + ' of ' + IntToStr(Length(tasks)) + ' ---');
-    case tasks[idx].task_type of
-
-      // Expedition
-      Type_Expedition :
-      begin
-        if(idx < Length(tasks)) then
-        begin
-          Memo_Log.Append('Executing Expedition task...');
-          Execute_Expedition_Order(tasks[idx], shopfloor);
-
-          // Next Operation to be executed.
-          if(tasks[idx].current_operation = Stage_Finished) then
-          begin
-            StringGrid1.Cells[5, tasks[idx].order_index + 1] := 'Completed';
-            Memo_Log.Append('Expedition Order ' + IntToStr(idx+1) + ' completed.');
-            inc(idx_Task_Executing);
-          end;
-        end;
-      end;
-
-
-      // Production
-      Type_Production :
-      begin
-        if(idx < Length(tasks)) then
-                begin
-                  Memo_Log.Append('Executing Production task...');
-                  Execute_Production_Order(tasks[idx], shopfloor);
-
-                  // Next Operation to be executed.
-                  if(tasks[idx].current_operation = Stage_Finished) then
-                    begin
-                    StringGrid1.Cells[5, tasks[idx].order_index + 1] := 'Completed';
-                    Memo_Log.Append('Production Order ' + IntToStr(idx+1) + ' completed.');
-                    inc(idx_Task_Executing);
-                    end;
-                end;
-      end;
-
-
-      // Inbound
-      Type_Delivery :
-      begin
-        if(idx < Length(tasks)) then
-                begin
-                  Memo_Log.Append('Executing Delivery task...');
-                  Execute_Delivery_Order(tasks[idx], shopfloor);
-
-                  // Next Operation to be executed.
-                  if(tasks[idx].current_operation = Stage_Finished) then
-                    begin
-                    StringGrid1.Cells[5, tasks[idx].orEder_index + 1] := 'Completed';
-                    Memo_Log.Append('Delivery Order ' + IntToStr(idx+1) + ' completed.');
-                    inc(idx_Task_Executing);
-                    end;
-
-                end;
-      end;
-
-
-    end;
-end;
-*)
-
 // Global Dispatcher - SIMPLEX, now supporting parallel tasks
 procedure TFormDispatcher.Dispatcher(var tasks:TArray_Task; shopfloor: TResources );
 var
   i: integer;
   Finished: Boolean;
-  taskTypeName : string;
+  // taskTypeName : string;
+  j : integer;
+  time_spent : integer;
 begin
     Finished := True;
 
@@ -708,11 +626,36 @@ begin
         end;
     end;
 
-    // Se varremos todas e todas estão no Stage_Finished:
+    // If all tasks finished:
     if Finished then
     begin
       Memo_Log.Append('All tasks completed!');
-      Memo_Log.Append('--- TOTAL COST OF PRODUCTION: ' + FloatToStr(Total_Cost) + ' EUR ---');
+      Memo_Log.Append('--- TOTAL COST OF PRODUCTION: ' + FormatFloat('0.00', Total_Cost) + ' EUR ---');
+
+      //total uptime for cells 1 and 2
+      if Length(Cell1_Times) > 0 then
+      begin
+           time_spent := 0;
+           for j := 0 to High(Cell1_Times) do time_spent := time_spent + Cell1_Times[j];
+               Memo_Log.Append('--- TOTAL CELL 1 UPTIME: ' + FormatFloat('0.00', time_spent) + ' s');
+      end;
+
+
+     if Length(Cell2_Times) > 0 then
+     begin
+          time_spent := 0;
+          for j := 0 to High(Cell2_Times) do time_spent := time_spent + Cell2_Times[j];
+              Memo_Log.Append('--- TOTAL CELL 2 UPTIME: ' + FormatFloat('0.00', time_spent) + ' s');
+     end;
+
+  // AR wait average
+     if Length(AR_Wait_Times) > 0 then
+     begin
+          time_spent := 0;
+          for j := 0 to High(AR_Wait_Times) do time_spent := time_spent + AR_Wait_Times[j];
+              Memo_Log.Append('--- AVG WAREHOUSE WAITING TIME: ' + FormatFloat('0.00', time_spent / Length(AR_Wait_Times)) + ' s');
+     end;
+
       Timer1.Enabled := false;
       SetLength(ShopTasks, 0); // Empty the aray so as not to repeat logs
     end;
@@ -876,7 +819,7 @@ begin
             Memo_Log.Append('Production result: ' + IntToStr(r) + ' | Destination: ' + IntToStr(Part_Destination) + ' | Part type: ' + IntToStr(part_type));
 
             if (r = 1) then
-               Conveyor_Busy_Until := GetTickCount64() + 8000;
+              Conveyor_Busy_Until := GetTickCount64() + 8000;
               AR_Locked := False;
               time_start := GetTickCount64();
               current_operation := Stage_Wait;
@@ -888,7 +831,18 @@ begin
         Memo_Log.Append('Waiting for produced part to arrive on input conveyor...');
         if (shopfloor.AR_In_Part = Part_Type) then //task only advances if part type is the correct one
         begin
-             time_spent := (GetTickCount64() - time_start) / 1000.0;
+            time_spent := (GetTickCount64() - time_start) / 1000.0;
+            if Part_Destination = 1 then
+            begin
+                 SetLength(Cell1_Times, Length(Cell1_Times) + 1);
+                 Cell1_Times[High(Cell1_Times)] := time_spent;
+            end
+            else
+            begin
+                 SetLength(Cell2_Times, Length(Cell2_Times) + 1);
+                 Cell2_Times[High(Cell2_Times)] := time_spent;
+            end;
+
             Total_Cost := Total_Cost + (time_spent * 2.0);
 
             time_wait_ar := GetTickCount64();
@@ -925,6 +879,8 @@ begin
 
           if ( r = 1 ) then                                 //sucess
              time_spent := (GetTickCount64() - time_wait_ar) / 1000.0;
+             SetLength(AR_Wait_Times, Length(AR_Wait_Times) + 1);
+             AR_Wait_Times[High(AR_Wait_Times)] := time_spent;
              Total_Cost := Total_Cost + (time_spent * 6.0);
              current_operation :=  Stage_Update_Pos_AR;
         end;
@@ -1018,6 +974,8 @@ begin
               if (r = 1) then
               begin
               time_spent := (GetTickCount64() - time_wait_ar) / 1000.0;
+              SetLength(AR_Wait_Times, Length(AR_Wait_Times) + 1);
+              AR_Wait_Times[High(AR_Wait_Times)] := time_spent;
               Total_Cost := Total_Cost + (time_spent * 6.0);
               current_operation := Stage_Update_Pos_AR_1;
               end;
