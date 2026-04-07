@@ -169,8 +169,8 @@ var
   Conveyor_Busy_until : QWord = 0;  //prevents loading on the main conveyor belt while it's busy
 
   Cell1_Times : array of double;
-  Cell2_Times : array of doubles;
-  AR_Wait_Times : array of doubles;
+  Cell2_Times : array of double;
+  AR_Wait_Times : array of double;
 
 implementation
 
@@ -632,6 +632,7 @@ begin
       Memo_Log.Append('All tasks completed!');
       Memo_Log.Append('--- TOTAL COST OF PRODUCTION: ' + FormatFloat('0.00', Total_Cost) + ' EUR ---');
 
+      //total uptime for cells 1 and 2
       if Length(Cell1_Times) > 0 then
       begin
            time_spent := 0;
@@ -639,7 +640,7 @@ begin
                Memo_Log.Append('--- TOTAL CELL 1 UPTIME: ' + FormatFloat('0.00', time_spent) + ' s');
       end;
 
-  // Cell 2 average
+
      if Length(Cell2_Times) > 0 then
      begin
           time_spent := 0;

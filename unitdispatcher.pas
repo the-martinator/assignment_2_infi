@@ -169,8 +169,8 @@ var
   Conveyor_Busy_until : QWord = 0;  //prevents loading on the main conveyor belt while it's busy
 
   Cell1_Times : array of double;
-  Cell2_Times : array of doubles;
-  AR_Wait_Times : array of doubles;
+  Cell2_Times : array of double;
+  AR_Wait_Times : array of double;
 
 implementation
 
@@ -582,7 +582,7 @@ var
   Finished: Boolean;
   // taskTypeName : string;
   j : integer;
-  time_spent : integer;
+  time_spent : double;
 begin
     Finished := True;
 
