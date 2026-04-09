@@ -747,17 +747,17 @@ begin
           SET_AR_Position(Part_Position_AR, 0, WAREHOUSE_Parts);
           inc(Monitoring_Expedited[Part_Type]);
           current_operation :=  Stage_Finished;
-        end;
-
-        //Done.
-        Stage_Finished :
-        begin
           if is_grey then
           begin
             Dec(Active_grey_parts);
             is_grey := False;
           end;
           Total_Cost := Total_Cost + 3.0; // 3€ per expedition task
+        end;
+
+        //Done.
+        Stage_Finished :
+        begin
           current_operation :=  Stage_Finished;
         end;
       end;
@@ -911,16 +911,16 @@ begin
           AR_Locked := False;
           dec(Monitoring_InProduction[Part_Type]);
           current_operation :=  Stage_Finished;
-        end;
-
-        //Done.
-        Stage_Finished :
-        begin
           if is_grey then
           begin
             Dec(Active_Grey_Parts);
             is_grey := False;
           end;
+        end;
+
+        //Done.
+        Stage_Finished :
+        begin
           current_operation :=  Stage_Finished;
         end;
       end;
@@ -1008,11 +1008,7 @@ begin
            Memo_Log.Append('Inbound complete. Part ' + IntToStr(Part_Type) + ' stored at warehouse position ' + IntToStr(Part_Position_AR));
            AR_Locked := False;
            current_operation := Stage_Finished;
-        end;
-
-        Stage_Finished:
-        begin
-             if Part_Type = Part_Raw_Green then
+           if Part_Type = Part_Raw_Green then
              Total_Cost := Total_Cost + 4.0
            else if (Part_Type = Part_Raw_Blue) or (Part_Type = Part_Raw_Grey) then
              Total_Cost := Total_Cost + 1.0;
@@ -1022,7 +1018,10 @@ begin
              Dec(Active_Grey_Parts);
              is_grey := False;
            end;
+        end;
 
+        Stage_Finished:
+        begin
            current_operation := Stage_Finished;
         end;
 

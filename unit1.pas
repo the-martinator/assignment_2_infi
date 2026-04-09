@@ -103,10 +103,9 @@ end;
 procedure TFormQuality.LoadProductionData;
 var
   i, j, rowCount: integer;
-  partName: string; // Definida aqui como variável local
+  partName: string;
 begin
   GridQuality.RowCount := 1;
-  GridQuality.ColCount := 3;
   GridQuality.Cells[0, 0] := 'Order ID';
   GridQuality.Cells[1, 0] := 'Part Type';
   GridQuality.Cells[2, 0] := 'Defect?';

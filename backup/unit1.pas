@@ -46,10 +46,6 @@ begin
 
 end;
 
-procedure TFormQuality.BtSaveClick(Sender: TObject);
-begin
-
-end;
 
 procedure TFormQuality.GroupBoxQualityClick(Sender: TObject);
 begin
@@ -107,10 +103,9 @@ end;
 procedure TFormQuality.LoadProductionData;
 var
   i, j, rowCount: integer;
-  partName: string; // Definida aqui como variável local
+  partName: string;
 begin
   GridQuality.RowCount := 1;
-  GridQuality.ColCount := 3;
   GridQuality.Cells[0, 0] := 'Order ID';
   GridQuality.Cells[1, 0] := 'Part Type';
   GridQuality.Cells[2, 0] := 'Defect?';
@@ -118,7 +113,7 @@ begin
   rowCount := 1;
   for i := 0 to High(Production_Orders) do
   begin
-    // Aqui usas a função que criámos acima para obter o nome
+
     partName := GetPartName(Production_Orders[i].part_type);
 
     for j := 1 to Production_Orders[i].part_numbers do

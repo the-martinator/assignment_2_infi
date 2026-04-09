@@ -1,7 +1,7 @@
 object FormDispatcher: TFormDispatcher
   Left = 414
-  Height = 949
-  Top = 107
+  Height = 989
+  Top = 90
   Width = 1148
   Caption = 'Dispatcher'
   ClientHeight = 0
@@ -21,9 +21,9 @@ object FormDispatcher: TFormDispatcher
     TabOrder = 7
   end
   object GroupBox_log: TGroupBox
-    Left = 24
+    Left = 21
     Height = 220
-    Top = 720
+    Top = 760
     Width = 1097
     Caption = 'Production Log'
     Color = clNavy
@@ -54,7 +54,7 @@ object FormDispatcher: TFormDispatcher
   object Memo_Log: TMemo
     Left = 32
     Height = 176
-    Top = 752
+    Top = 792
     Width = 1074
     Lines.Strings = (
       'Memo1'
@@ -217,9 +217,9 @@ object FormDispatcher: TFormDispatcher
     end
   end
   object GroupBox_Production: TGroupBox
-    Left = 23
+    Left = 20
     Height = 251
-    Top = 464
+    Top = 504
     Width = 1098
     Caption = 'Production Plan'
     ClientHeight = 226
@@ -349,11 +349,11 @@ object FormDispatcher: TFormDispatcher
   end
   object GroupBox_Monitor: TGroupBox
     Left = 24
-    Height = 197
-    Top = 256
+    Height = 248
+    Top = 248
     Width = 1095
     Caption = 'Monitor'
-    ClientHeight = 172
+    ClientHeight = 223
     ClientWidth = 1091
     Color = clNavy
     ParentBackground = False
@@ -361,10 +361,10 @@ object FormDispatcher: TFormDispatcher
     TabOrder = 8
     OnClick = GroupBox_MonitorClick
     object StringGrid2: TStringGrid
-      Left = 60
-      Height = 140
-      Top = 13
-      Width = 963
+      Left = 320
+      Height = 220
+      Top = -8
+      Width = 450
       RowCount = 10
       TabOrder = 0
     end
