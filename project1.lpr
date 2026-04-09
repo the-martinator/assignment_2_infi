@@ -7,7 +7,7 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, comTestUnit, comUnit, unitdispatcher;
+  Forms, comTestUnit, comUnit, unitdispatcher, Unit1;
 
 {$R *.res}
 
@@ -18,6 +18,7 @@ begin
      Application.CreateForm(TFormDispatcher, FormDispatcher);
      Application.CreateForm(TFormComTest, FormComTest);
      Application.CreateForm(TComForm, ComForm);
+  Application.CreateForm(TFormQuality, FormQuality);
      Application.Run;
 end.
 

@@ -1,219 +1,167 @@
-unit unit1;
+unit Unit1;
 
-{$mode objfpc}{$H+}
+{$mode ObjFPC}{$H+}
 
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, comUnit;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
+  Grids;
 
 type
 
-  { TForm2 }
+  { TFormQuality }
 
-  TForm2 = class(TForm)
-    Bconnect: TButton;
-    Bunload: TButton;
-    Button1: TButton;
-    Button2: TButton;
-    Bload: TButton;
-    Bfree: TButton;
-    Bused: TButton;
-    Boccupation: TButton;
-    Binitialize: TButton;
-    Btransport: TButton;
-    Breceive: TButton;
-    Bcommand_status: TButton;
-    BFactoryStatus: TButton;
-    Edit1: TEdit;
-    Edit2: TEdit;
-    Label1: TLabel;
-    Label2: TLabel;
-    Label3: TLabel;
-    Label4: TLabel;
-    Memo1: TMemo;
-    Memo2: TMemo;
-    procedure Bcommand_statusClick(Sender: TObject);
-    procedure BconnectClick(Sender: TObject);
-    procedure BfreeClick(Sender: TObject);
-    procedure BinitializeClick(Sender: TObject);
-    procedure BoccupationClick(Sender: TObject);
-    procedure BreceiveClick(Sender: TObject);
-    procedure BtransportClick(Sender: TObject);
-    procedure BunloadClick(Sender: TObject);
-    procedure BusedClick(Sender: TObject);
-    procedure Button1Click(Sender: TObject);
-    procedure Button2Click(Sender: TObject);
-    procedure BloadClick(Sender: TObject);
-    procedure BFactoryStatusClick(Sender: TObject);
+  TFormQuality = class(TForm)
+    BtSave: TButton;
+    GroupBoxQuality: TGroupBox;
+    GroupBoxCost: TGroupBox;
+    GridQuality: TStringGrid;
+    GridStats: TStringGrid;
+    procedure BtSaveClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
-    procedure Label4Click(Sender: TObject);
-    procedure Memo1Change(Sender: TObject);
+    procedure GroupBoxQualityClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
   private
-
+    procedure LoadProductionData;
+    procedure StatGridConfig;
+    procedure UpdateStats(DefectCost: Double);
   public
 
   end;
 
 var
-  Form2: TForm2;
-  SeqID: integer = 500;
+  FormQuality: TFormQuality;
 
 implementation
 
+uses unitdispatcher;
+
 {$R *.lfm}
 
-{ TForm2 }
+{ TFormQuality }
 
-procedure TForm2.BconnectClick(Sender: TObject);
-var result : integer;
+procedure TFormQuality.FormCreate(Sender: TObject);
 begin
-        result:=M_connect();
-
-        Memo1.append('CONNECT : Resultado = ' + floattostr(result));
-end;
-
-procedure TForm2.Bcommand_statusClick(Sender: TObject);
-var result: cmd_result;
-begin
-     result:=M_Command_Status(seqid, strtoint(Edit1.text));
-
-     Memo1.append('SEQID #'+ floattostr(seqid)+ ' COMMAND_STATUS (' + Edit1.text + ')' );
-     Memo1.append('SEQID #'+ floattostr(result.seqid)+ ' COMMAND_STATUS : Resultado = ' + floattostr(result.result));
-
-     seqid:=seqid+1;
-end;
-
-procedure TForm2.BfreeClick(Sender: TObject);
-var result: cmd_result;
-begin
-     result:=M_Free(seqid);
-
-     Memo1.append('SEQID #'+ floattostr(seqid)+ ' FREE' );
-     Memo1.append('SEQID #'+ floattostr(result.seqid)+ ' FREE : Resultado = ' + floattostr(result.result));
-
-     seqid:=seqid+1;
-end;
-
-procedure TForm2.BinitializeClick(Sender: TObject);
-var result: cmd_result;
-begin
-     result:=M_Initialize(seqid, strtoint(Edit1.text), strtoint(Edit2.text));
-
-     Memo1.append('SEQID #'+ floattostr(seqid)+ ' INITIALIZE (' + Edit1.text +', ' + Edit2.text +')' );
-     Memo1.append('SEQID #'+ floattostr(result.seqid)+ ' INITIALIZE : Resultado = ' + floattostr(result.result));
-
-     seqid:=seqid+1;
-end;
-
-procedure TForm2.BoccupationClick(Sender: TObject);
-var result: cmd_result;
-begin
-     result:=M_Occupation(seqid, strtoint(Edit1.text));
-
-     Memo1.append('SEQID #'+ floattostr(seqid)+ ' OCCUPATION (' + Edit1.text + ')' );
-     Memo1.append('SEQID #'+ floattostr(result.seqid)+ ' OCCUPATION : Resultado = ' + floattostr(result.result));
-
-     seqid:=seqid+1;
-end;
-
-procedure TForm2.BreceiveClick(Sender: TObject);
-var result: cmd_result;
-begin
-     result:=M_Receive(seqid, strtoint(Edit1.text));
-
-     Memo1.append('SEQID #'+ floattostr(seqid)+ ' RECEIVE (' + Edit1.text + ')' );
-     Memo1.append('SEQID #'+ floattostr(result.seqid)+ ' RECEIVE : Resultado = ' + floattostr(result.result));
-
-     seqid:=seqid+1;
-end;
-
-procedure TForm2.BtransportClick(Sender: TObject);
-var result: cmd_result;
-begin
-     result:=M_Transport(seqid, strtoint(Edit1.text));
-
-     Memo1.append('SEQID #'+ floattostr(seqid)+ ' TRANSPORT (' + Edit1.text + ')' );
-     Memo1.append('SEQID #'+ floattostr(result.seqid)+ ' TRANSPORT : Resultado = ' + floattostr(result.result));
-
-     seqid:=seqid+1;
-end;
-
-procedure TForm2.BunloadClick(Sender: TObject);
-var result: cmd_result;
-begin
-     result:=M_Unload(seqid, strtoint(Edit1.text));
-
-     Memo1.append('SEQID #'+ floattostr(seqid)+ ' UNLOAD (' + Edit1.text + ')' );
-     Memo1.append('SEQID #'+ floattostr(result.seqid)+ ' UNLOAD : Resultado = ' + floattostr(result.result));
-
-     seqid:=seqid+1;
 
 end;
 
-procedure TForm2.BusedClick(Sender: TObject);
-var result: cmd_result;
+procedure TFormQuality.BtSaveClick(Sender: TObject);
 begin
-     result:=M_Used(seqid);
-
-     Memo1.append('SEQID #'+ floattostr(seqid)+ ' USED' );
-     Memo1.append('SEQID #'+ floattostr(result.seqid)+ ' USED : Resultado = ' + floattostr(result.result));
-
-     seqid:=seqid+1;
-end;
-
-procedure TForm2.Button1Click(Sender: TObject);
-var result : integer;
-begin
-        result:=M_connect();
-
-        Memo1.append('DISCONNECT : Resultado = ' + floattostr(result));
-
-        seqid:=500;
 
 end;
 
-procedure TForm2.Button2Click(Sender: TObject);
+procedure TFormQuality.GroupBoxQualityClick(Sender: TObject);
 begin
-     ComForm1.Show;
+
 end;
 
-procedure TForm2.BloadClick(Sender: TObject);
-var result: cmd_result;
+procedure TFormQuality.FormShow(Sender: TObject);
 begin
-     result:=M_load(seqid, strtoint(Edit1.text));
-
-     Memo1.append('SEQID #'+ floattostr(seqid)+ ' LOAD (' + Edit1.text + ')' );
-     Memo1.append('SEQID #'+ floattostr(result.seqid)+ ' LOAD : Resultado = ' + floattostr(result.result));
-
-     seqid:=seqid+1;
+  LoadProductionData;
+  StatGridConfig;
+  UpdateStats(0.0);
 end;
 
-procedure TForm2.BFactoryStatusClick(Sender: TObject);
+procedure TFormQuality.StatGridConfig;
+begin
+  GridStats.RowCount := 6;
+  GridStats.ColCount := 2;
+
+
+  GridStats.ColWidths[0] := 200;
+  GridStats.ColWidths[1] := 100;
+
+  GridStats.Cells[0, 0] := 'Stat';
+  GridStats.Cells[1, 0] := 'Value';
+
+  GridStats.Cells[0, 1] := 'Uptime Cell 1';
+  GridStats.Cells[0, 2] := 'Uptime Cell 2';
+  GridStats.Cells[0, 3] := 'Average AR wait';
+  GridStats.Cells[0, 4] := 'Cost of Defects';
+  GridStats.Cells[0, 5] := 'Total Cost';
+end;
+
+procedure TFormQuality.UpdateStats(DefectCost: Double);
+begin
+  GridStats.Cells[1, 1] := FormatFloat('0.00', Total_Uptime_Cell1) + ' s';
+  GridStats.Cells[1, 2] := FormatFloat('0.00', Total_Uptime_Cell2) + ' s';
+  GridStats.Cells[1, 3] := FormatFloat('0.00', Avg_AR_Wait) + ' s';
+  GridStats.Cells[1, 4] := FormatFloat('0.00', DefectCost) + ' EUR';
+  GridStats.Cells[1, 5] := FormatFloat('0.00', Total_Cost + DefectCost) + ' EUR';
+end;
+
+function GetPartName(ID: integer): string;
+begin
+  case ID of
+    Part_Base_Blue:  Result := 'Base Blue';
+    Part_Base_Green: Result := 'Base Green';
+    Part_Base_Grey:  Result := 'Base Grey';
+    Part_Lid_Blue:   Result := 'Lid Blue';
+    Part_Lid_Green:  Result := 'Lid Green';
+    Part_Lid_Grey:   Result := 'Lid Grey';
+    else Result := 'Unknown Part';
+  end;
+end;
+
+procedure TFormQuality.LoadProductionData;
 var
-  i: integer;
+  i, j, rowCount: integer;
+  partName: string; // Definida aqui como variável local
 begin
-     Memo2.clear;
-     for i:=0 to 11 do
-         Memo2.append('('+floattostr(i)+') = ' + floattostr(status_values[i]));
+  GridQuality.RowCount := 1;
+  GridQuality.ColCount := 3;
+  GridQuality.Cells[0, 0] := 'Order ID';
+  GridQuality.Cells[1, 0] := 'Part Type';
+  GridQuality.Cells[2, 0] := 'Defect?';
 
+  rowCount := 1;
+  for i := 0 to High(Production_Orders) do
+  begin
+    // Aqui usas a função que criámos acima para obter o nome
+    partName := GetPartName(Production_Orders[i].part_type);
 
+    for j := 1 to Production_Orders[i].part_numbers do
+    begin
+      GridQuality.RowCount := rowCount + 1;
+      GridQuality.Cells[0, rowCount] := IntToStr(i);
+      GridQuality.Cells[1, rowCount] := partName;
+      GridQuality.Cells[2, rowCount] := '0';
+      Inc(rowCount);
+    end;
+  end;
 end;
 
-procedure TForm2.FormCreate(Sender: TObject);
+procedure TFormQuality.BtSaveClick(Sender: TObject);
+var
+  r, orderIdx: integer;
+  isDefect: boolean;
 begin
+  SetLength(Production_Orders_Good_Quality, Length(Production_Orders));
+
+  for r := 0 to High(Production_Orders_Good_Quality) do
+  begin
+    Production_Orders_Good_Quality[r] := Production_Orders[r];
+    Production_Orders_Good_Quality[r].part_numbers := 0;
+  end;
+
+  Total_Defect_Cost := 0;
+
+  for r := 1 to GridQuality.RowCount - 1 do
+  begin
+    orderIdx := StrToInt(GridQuality.Cells[0, r]);
+    isDefect := GridQuality.Cells[2, r] = '1';
+
+    if isDefect then
+       Total_Defect_Cost := Total_Defect_Cost + 5.0
+    else
+       Inc(Production_Orders_Good_Quality[orderIdx].part_numbers);
+  end;
+
+  UpdateStats(Total_Defect_Cost);
+
+  ShowMessage('Production plan successfully validated!');
 
 end;
-
-procedure TForm2.Label4Click(Sender: TObject);
-begin
-
-end;
-
-procedure TForm2.Memo1Change(Sender: TObject);
-begin
-
-end;
-
 end.
 

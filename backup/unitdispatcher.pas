@@ -102,6 +102,7 @@ type
     StringGrid1: TStringGrid;
     StringGrid2: TStringGrid;
     Timer1: TTimer;
+    TimerOpenQuality: TTimer;
     procedure BExecuteClick(Sender: TObject);
     procedure BInitiatilizeClick(Sender: TObject);
     procedure BStartClick(Sender: TObject);
@@ -113,6 +114,7 @@ type
     procedure Memo_LogChange(Sender: TObject);
     procedure SpinEdit_Base_BlueChange(Sender: TObject);
     procedure Timer1Timer(Sender: TObject);
+    procedure TimerOpenQualityTimer(Sender: TObject);
   private
 
   public
@@ -147,6 +149,9 @@ var
   // Production orders obtained by the ERP (using the SQL Query)
   Production_Orders : TArray_Production_Order;
 
+  //New array only for quality parts
+  Production_Orders_Good_Quality : TArray_Production_Order;
+
   // Availability of resources (needs to be updated over time)
   ShopResources : TResources;
 
@@ -164,6 +169,7 @@ var
   Monitoring_InProduction : array[1..9] of integer;  // for counting how many parts recieved, expedtied and in production at any time
 
   Total_Cost : Double = 0.0;
+  Total_Defect_Cost : Double = 0.0;
   Active_Grey_Parts : integer = 0;
   AR_Locked : boolean = False; //locks the use of the warehouse
   Conveyor_Busy_until : QWord = 0;  //prevents loading on the main conveyor belt while it's busy
@@ -172,7 +178,13 @@ var
   Cell2_Times : array of double;
   AR_Wait_Times : array of double;
 
+  Total_Uptime_Cell1: Double = 0.0;
+  Total_Uptime_Cell2: Double = 0.0;
+  Avg_AR_Wait: Double = 0.0;
+
 implementation
+
+uses unitquality;
 
 {$R *.lfm}
 
@@ -401,6 +413,12 @@ begin
   BExecuteClick(Self);
 end;
 
+procedure TFormDispatcher.TimerOpenQualityTimer(Sender: TObject);
+begin
+  TimerOpenQuality.Enabled := False; //stop timer
+  FormQuality.ShowModal; // open quality form
+end;
+
 
 
 
@@ -582,7 +600,7 @@ var
   Finished: Boolean;
   // taskTypeName : string;
   j : integer;
-  time_spent : integer;
+  time_spent : double;
 begin
     Finished := True;
 
@@ -630,33 +648,34 @@ begin
     if Finished then
     begin
       Memo_Log.Append('All tasks completed!');
-      Memo_Log.Append('--- TOTAL COST OF PRODUCTION: ' + FormatFloat('0.00', Total_Cost) + ' EUR ---');
+      Memo_Log.Append('--- COST OF PRODUCTION: ' + FormatFloat('0.00', Total_Cost) + ' EUR ---');
 
       //total uptime for cells 1 and 2
       if Length(Cell1_Times) > 0 then
       begin
-           time_spent := 0;
-           for j := 0 to High(Cell1_Times) do time_spent := time_spent + Cell1_Times[j];
-               Memo_Log.Append('--- TOTAL CELL 1 UPTIME: ' + FormatFloat('0.00', time_spent) + ' s');
+           Total_Uptime_Cell1 := 0;
+           for j := 0 to High(Cell1_Times) do Total_Uptime_Cell1 := Total_Uptime_Cell1 + Cell1_Times[j];
+               Memo_Log.Append('--- TOTAL CELL 1 UPTIME: ' + FormatFloat('0.00', Total_Uptime_Cell1) + ' s');
       end;
 
 
      if Length(Cell2_Times) > 0 then
      begin
-          time_spent := 0;
-          for j := 0 to High(Cell2_Times) do time_spent := time_spent + Cell2_Times[j];
-              Memo_Log.Append('--- TOTAL CELL 2 UPTIME: ' + FormatFloat('0.00', time_spent) + ' s');
+          Total_Uptime_Cell2 := 0;
+           for j := 0 to High(Cell2_Times) do Total_Uptime_Cell2 := Total_Uptime_Cell2 + Cell2_Times[j];
+               Memo_Log.Append('--- TOTAL CELL 2 UPTIME: ' + FormatFloat('0.00', Total_Uptime_Cell2) + ' s');
      end;
 
   // AR wait average
      if Length(AR_Wait_Times) > 0 then
      begin
-          time_spent := 0;
-          for j := 0 to High(AR_Wait_Times) do time_spent := time_spent + AR_Wait_Times[j];
-              Memo_Log.Append('--- AVG WAREHOUSE WAITING TIME: ' + FormatFloat('0.00', time_spent / Length(AR_Wait_Times)) + ' s');
+          Avg_AR_Wait := 0;
+          for j := 0 to High(AR_Wait_Times) do Avg_AR_Wait := Avg_AR_Wait + AR_Wait_Times[j];
+              Memo_Log.Append('--- AVG WAREHOUSE WAITING TIME: ' + FormatFloat('0.00', Avg_AR_Wait / Length(AR_Wait_Times)) + ' s');
      end;
 
       Timer1.Enabled := false;
+      TimerOpenQuality.Enabled := True;
       SetLength(ShopTasks, 0); // Empty the aray so as not to repeat logs
     end;
 end;

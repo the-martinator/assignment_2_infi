@@ -4,8 +4,8 @@ object FormDispatcher: TFormDispatcher
   Top = 107
   Width = 1148
   Caption = 'Dispatcher'
-  ClientHeight = 949
-  ClientWidth = 1148
+  ClientHeight = 0
+  ClientWidth = 0
   DesignTimePPI = 120
   LCLVersion = '4.4.0.0'
   OnCreate = FormCreate
@@ -374,5 +374,12 @@ object FormDispatcher: TFormDispatcher
     OnTimer = Timer1Timer
     Left = 624
     Top = 64
+  end
+  object TimerOpenQuality: TTimer
+    Enabled = False
+    Interval = 5000
+    OnTimer = TimerOpenQualityTimer
+    Left = 624
+    Top = 160
   end
 end

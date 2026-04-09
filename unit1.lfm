@@ -1,0 +1,80 @@
+object FormQuality: TFormQuality
+  Left = 920
+  Height = 674
+  Top = 193
+  Width = 683
+  Caption = 'FormQuality'
+  ClientHeight = 674
+  ClientWidth = 683
+  DesignTimePPI = 120
+  LCLVersion = '4.4.0.0'
+  OnCreate = FormCreate
+  object GroupBoxQuality: TGroupBox
+    Left = 34
+    Height = 280
+    Top = 32
+    Width = 599
+    Caption = 'Quality Check'
+    ClientHeight = 255
+    ClientWidth = 595
+    Color = clNavy
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 0
+    OnClick = GroupBoxQualityClick
+    object GridQuality: TStringGrid
+      Left = 32
+      Height = 184
+      Top = 16
+      Width = 530
+      ColCount = 3
+      Columns = <      
+        item
+          Title.Caption = 'Order ID'
+          Width = 80
+        end      
+        item
+          Title.Caption = 'Part Type'
+          Width = 80
+        end      
+        item
+          Alignment = taCenter
+          ButtonStyle = cbsCheckboxColumn
+          Title.Caption = 'Defect?'
+          Width = 80
+        end>
+      FixedCols = 0
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goSmoothScroll]
+      TabOrder = 0
+    end
+    object BtSave: TButton
+      Left = 32
+      Height = 31
+      Top = 208
+      Width = 94
+      Caption = 'Save'
+      TabOrder = 1
+      OnClick = BtSaveClick
+    end
+  end
+  object GroupBoxCost: TGroupBox
+    Left = 34
+    Height = 198
+    Top = 360
+    Width = 597
+    Caption = 'Cost Control'
+    ClientHeight = 173
+    ClientWidth = 593
+    Color = clNavy
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 1
+    object GridStats: TStringGrid
+      Left = 32
+      Height = 125
+      Top = 16
+      Width = 528
+      TabOrder = 0
+    end
+  end
+end

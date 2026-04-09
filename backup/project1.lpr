@@ -15,10 +15,8 @@ begin
      RequireDerivedFormResource:=True;
      Application.Scaled:=True;
      Application.Initialize;
-          Application.CreateForm(TFormDispatcher, FormDispatcher);
+     Application.CreateForm(TFormDispatcher, FormDispatcher);
      Application.CreateForm(TFormComTest, FormComTest);
-
-
      Application.CreateForm(TComForm, ComForm);
      Application.Run;
 end.
