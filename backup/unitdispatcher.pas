@@ -270,7 +270,7 @@ begin
         //SetLength(tasks,  numb_tasks_total + orders[idx_order].part_numbers);
         for numb_same_task := 0 to orders[idx_order].part_numbers-1 do
         begin
-          if (part_type = Part_Raw_Green) or (Part_Type = Part_Base_Green) or (Part_Type = Part_Lid_Green) then
+          if (task_type = Type_Expedition) and ((part_type = Part_Raw_Green) or (Part_Type = Part_Base_Green) or (Part_Type = Part_Lid_Green)) then   //changed this!!
           begin
             SetLength(GreenTasks, Length(GreenTasks)+1);
             GreenTasks[high(GreenTasks)] := current_task;
@@ -439,9 +439,9 @@ begin
 
   freePosition := 1;
 
-  if SpinEdit_Raw_Blue.Value + SpinEdit_Raw_Green.Value + SpinEdit_Raw_Gray.Value + SpinEdit_Base_Blue.Value + SpinEdit_Base_Green.Value + SpinEdit_Base_Gray.Value + SpinEdit_Lid_Blue.Value + SpinEdit_Lid_green.Value + SpinEdit_Lid_gray.Value >= 5 then
+  if SpinEdit_Raw_Blue.Value + SpinEdit_Raw_Green.Value + SpinEdit_Raw_Gray.Value + SpinEdit_Base_Blue.Value + SpinEdit_Base_Green.Value + SpinEdit_Base_Gray.Value + SpinEdit_Lid_Blue.Value + SpinEdit_Lid_green.Value + SpinEdit_Lid_gray.Value >= 7 then
     begin
-  Memo_Log.Append('Error: Too many parts! Maximum is 4.');  //still considering the restriction of only using first column
+  Memo_Log.Append('Error: Too many parts! Maximum is 6.');  //still considering the restriction of only using first column
   Exit;
        end
   else
@@ -840,7 +840,6 @@ begin
             if (r = 1) then
               Conveyor_Busy_Until := GetTickCount64() + 8000;
               AR_Locked := False;
-              time_start := GetTickCount64();
               current_operation := Stage_Wait;
           end;
         end;
@@ -850,14 +849,15 @@ begin
         Memo_Log.Append('Waiting for produced part to arrive on input conveyor...');
         if (shopfloor.AR_In_Part = Part_Type) then //task only advances if part type is the correct one
         begin
-            time_spent := (GetTickCount64() - time_start) / 1000.0;
             if Part_Destination = 1 then
             begin
+                 time_spent :=  15.0;
                  SetLength(Cell1_Times, Length(Cell1_Times) + 1);
                  Cell1_Times[High(Cell1_Times)] := time_spent;
             end
             else
             begin
+                 time_spent :=  13.0;
                  SetLength(Cell2_Times, Length(Cell2_Times) + 1);
                  Cell2_Times[High(Cell2_Times)] := time_spent;
             end;
@@ -941,7 +941,7 @@ begin
         begin
            current_operation :=  Stage_Get_Free_Position;
         end;
-
+       (*
         Stage_Get_Free_Position:
 
                begin
@@ -962,6 +962,33 @@ begin
                   Memo_Log.Append('Warehouse is full!');
                end;
                end;
+         *)
+         Stage_Get_Free_Position:
+        begin
+          if not AR_Locked then  // ADD THIS CHECK
+          begin
+            Part_Position_AR := GET_AR_Free_Position(WAREHOUSE_Parts);
+
+            if (Part_Position_AR > 0) then
+            begin
+              AR_Locked := True;  // LOCK IMMEDIATELY
+              // Reserve the position in memory right away so the next task sees it as taken
+              SET_AR_Position(Part_Position_AR, Part_Type, WAREHOUSE_Parts);
+              Memo_Log.Append('Free warehouse position found: ' + IntToStr(Part_Position_AR));
+              r := M_Do_Inbound(Part_Type);
+              if (r = 1) then
+                current_operation := Stage_Inbound
+              else
+              begin
+                // Roll back reservation if inbound call failed
+                SET_AR_Position(Part_Position_AR, 0, WAREHOUSE_Parts);
+                AR_Locked := False;
+              end;
+            end
+            else
+              Memo_Log.Append('Warehouse is full!');
+          end;
+        end;
 
          Stage_Inbound :
         begin
@@ -976,7 +1003,7 @@ begin
 
          Stage_GetPosition:
         begin
-           if (shopfloor.AR_free) and not AR_Locked and (shopfloor.AR_In_Part = Part_Type) then
+           if (shopfloor.AR_free) (*and not AR_Locked *) and (shopfloor.AR_In_Part = Part_Type) then
            begin
               AR_Locked := True;
               current_operation := Stage_Load;
