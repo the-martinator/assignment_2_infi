@@ -52,9 +52,8 @@
         <ComponentName Value="FormDispatcher"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="2"/>
-        <TopLine Value="961"/>
+        <TopLine Value="962"/>
         <CursorPos X="88" Y="965"/>
         <UsageCount Value="115"/>
         <Loaded Value="True"/>
@@ -67,8 +66,9 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="Unit1"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="3"/>
-        <TopLine Value="128"/>
+        <TopLine Value="127"/>
         <CursorPos X="5" Y="178"/>
         <UsageCount Value="34"/>
         <Loaded Value="True"/>

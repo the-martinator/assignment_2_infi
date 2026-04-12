@@ -4,8 +4,8 @@ object FormQuality: TFormQuality
   Top = 193
   Width = 683
   Caption = 'FormQuality'
-  ClientHeight = 0
-  ClientWidth = 0
+  ClientHeight = 741
+  ClientWidth = 683
   DesignTimePPI = 120
   LCLVersion = '4.4.0.0'
   OnCreate = FormCreate

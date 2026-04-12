@@ -134,9 +134,9 @@ procedure TFormQuality.BtSaveClick(Sender: TObject);
 var
   r, orderIdx: integer;
   isDefect: boolean;
-  tempOrders: TArray_Production_Order; // Array temporário para filtrar zeros
+  tempOrders: TArray_Production_Order; // Temporary array we'll use to then filter out production orders with zero quality parts
 begin
-  // Copiar estrutura e zerar apenas as de produção
+  // Change only production orders
   SetLength(Production_Orders_Good_Quality, Length(Production_Orders));
   for r := 0 to High(Production_Orders_Good_Quality) do
   begin
@@ -147,7 +147,7 @@ begin
 
   Total_Defect_Cost := 0;
 
-  // Ler a grelha e contabilizar as peças boas e os defeitos
+
   for r := 1 to GridQuality.RowCount - 1 do
   begin
     orderIdx := StrToInt(GridQuality.Cells[0, r]);
@@ -159,7 +159,7 @@ begin
        Inc(Production_Orders_Good_Quality[orderIdx].part_numbers);
   end;
 
-  // --- Limpeza: Remover do array as ordens que ficaram com 0 peças ---
+  // Remove orders with zero quality parts from the array
   SetLength(tempOrders, 0);
   for r := 0 to High(Production_Orders_Good_Quality) do
   begin
@@ -170,7 +170,7 @@ begin
     end;
   end;
 
-  // Substituir o array final pelo array limpo
+  // Final array
   Production_Orders_Good_Quality := tempOrders;
 
   UpdateStats(Total_Defect_Cost);

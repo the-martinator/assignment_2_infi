@@ -134,16 +134,19 @@ procedure TFormQuality.BtSaveClick(Sender: TObject);
 var
   r, orderIdx: integer;
   isDefect: boolean;
+  tempOrders: TArray_Production_Order; // Temporary array we'll use to then filter out production orders with zero quality parts
 begin
+  // Change only production orders
   SetLength(Production_Orders_Good_Quality, Length(Production_Orders));
-
   for r := 0 to High(Production_Orders_Good_Quality) do
   begin
     Production_Orders_Good_Quality[r] := Production_Orders[r];
-    Production_Orders_Good_Quality[r].part_numbers := 0;
+    if Production_Orders[r].order_type = Type_Production then
+      Production_Orders_Good_Quality[r].part_numbers := 0;
   end;
 
   Total_Defect_Cost := 0;
+
 
   for r := 1 to GridQuality.RowCount - 1 do
   begin
@@ -156,10 +159,22 @@ begin
        Inc(Production_Orders_Good_Quality[orderIdx].part_numbers);
   end;
 
+  // --- Limpeza: Remover do array as ordens que ficaram com 0 peças ---
+  SetLength(tempOrders, 0);
+  for r := 0 to High(Production_Orders_Good_Quality) do
+  begin
+    if Production_Orders_Good_Quality[r].part_numbers > 0 then
+    begin
+      SetLength(tempOrders, Length(tempOrders) + 1);
+      tempOrders[High(tempOrders)] := Production_Orders_Good_Quality[r];
+    end;
+  end;
+
+  // Substituir o array final pelo array limpo
+  Production_Orders_Good_Quality := tempOrders;
+
   UpdateStats(Total_Defect_Cost);
-
   ShowMessage('Production plan successfully validated!');
-
 end;
 end.
 
