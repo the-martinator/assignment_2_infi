@@ -598,7 +598,6 @@ procedure TFormDispatcher.Dispatcher(var tasks:TArray_Task; shopfloor: TResource
 var
   i: integer;
   Finished: Boolean;
-  // taskTypeName : string;
   j : integer;
   time_spent : double;
 begin
@@ -700,7 +699,7 @@ begin
         // Getting a Position from the Warehouse
         Stage_GetPart :
         begin
-          if(shopfloor.AR_free) and not AR_Locked and (GetTickCount64() > Conveyor_Busy_Until) then  //AR is free
+          if (shopfloor.AR_free) and not AR_Locked and (shopfloor.AR_Out_Part = 0) then  //AR is free
           begin
             Part_Position_AR := GET_AR_Position(Part_Type, WAREHOUSE_Parts);
 
@@ -735,7 +734,6 @@ begin
             r := M_Do_Expedition(Part_Destination);          // Expedition
             Memo_Log.Append('Waiting for part ' + IntToStr(Part_Type) + ' on output conveyor...');
             if( r = 1) then                                  // sucess
-                Conveyor_Busy_Until := GetTickCount64() + 8000; //prevents a new part from being sent to the conveyor right away, avoising collisions
                AR_Locked := False;
                current_operation :=  Stage_Clear_Pos_AR;
           end;
@@ -785,7 +783,7 @@ begin
         // Getting a Position from the Warehouse
         Stage_GetPart :
         begin
-          if(shopfloor.AR_free) and not AR_locked and (GetTickCount64() > Conveyor_Busy_Until) then  //AR is free
+          if (shopfloor.AR_free) and not AR_Locked and (shopfloor.AR_Out_Part = 0) then
           begin
             Memo_Log.Append('Looking for raw part at position ' + IntToStr(Part_Position_AR));
             if Part_Destination = 1 then
@@ -838,7 +836,6 @@ begin
             Memo_Log.Append('Production result: ' + IntToStr(r) + ' | Destination: ' + IntToStr(Part_Destination) + ' | Part type: ' + IntToStr(part_type));
 
             if (r = 1) then
-              Conveyor_Busy_Until := GetTickCount64() + 8000;
               AR_Locked := False;
               current_operation := Stage_Wait;
           end;
@@ -965,7 +962,7 @@ begin
          *)
          Stage_Get_Free_Position:
         begin
-          if not AR_Locked and shopfloor.AR_free then  // ADD THIS CHECK
+          if not AR_Locked and shopfloor.AR_free and (shopfloor.AR_Out_Part = 0) then
           begin
             Part_Position_AR := GET_AR_Free_Position(WAREHOUSE_Parts);
 

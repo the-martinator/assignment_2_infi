@@ -114,6 +114,9 @@ begin
   for i := 0 to High(Production_Orders) do
   begin
 
+    if Production_Orders[i].order_type <> Type_Production then
+      Continue;
+
     partName := GetPartName(Production_Orders[i].part_type);
 
     for j := 1 to Production_Orders[i].part_numbers do
