@@ -172,6 +172,7 @@ var
   Total_Defect_Cost : Double = 0.0;
   Active_Grey_Parts : integer = 0;
   AR_Locked : boolean = False; //locks the use of the warehouse
+  Conveyor_Busy_until : QWord = 0;  //prevents loading on the main conveyor belt while it's busy
 
   Cell1_Times : array of double;
   Cell2_Times : array of double;
@@ -227,14 +228,16 @@ end;
 procedure SimpleScheduler(var orders: TArray_Production_Order; var tasks: TArray_Task);
 var
   current_task : TTask;
-  idx_order, i, j : integer;
+  idx_order, j : integer;
   numb_same_task : integer;
-  is_green_j, is_green_above : boolean;
-  temp : TTask;
+  tempTasks : TArray_Task;
+  sortedTasks : TArray_Task;
+  is_grn : boolean;
 begin
-  SetLength(tasks, 0);
+  SetLength(tempTasks, 0);
+  SetLength(sortedTasks, 0);
 
-  // Unfold tasks into the array
+  // Unfold orders into a temporary array
   for idx_order := 0 to Length(orders) - 1 do
   begin
     with current_task do
@@ -255,31 +258,48 @@ begin
 
       for numb_same_task := 0 to orders[idx_order].part_numbers - 1 do
       begin
-        SetLength(tasks, Length(tasks) + 1);
-        tasks[High(tasks)] := current_task;
+        SetLength(tempTasks, Length(tempTasks) + 1);
+        tempTasks[High(tempTasks)] := current_task;
       end;
     end;
   end;
 
-  // Production and Inbound keep their places. if a green expedition comes after a non-green, it swaps.
-  for i := 0 to High(tasks) do
+  // set inbound and production orders before expeditions, with green expeditions having priority
+
+  // Production and Inbound in the order they were input
+  for j := 0 to High(tempTasks) do
   begin
-    for j := High(tasks) downto 1 do
+    if tempTasks[j].task_type <> Type_Expedition then
     begin
-      is_green_j := (tasks[j].part_type = Part_Raw_Green) or (tasks[j].part_type = Part_Base_Green) or (tasks[j].part_type = Part_Lid_Green);
-      is_green_above := (tasks[j-1].part_type = Part_Raw_Green) or (tasks[j-1].part_type = Part_Base_Green) or (tasks[j-1].part_type = Part_Lid_Green);
-
-      if (tasks[j].task_type = Type_Expedition) and is_green_j then
-      begin
-        if (tasks[j-1].task_type = Type_Expedition) and not is_green_above then
-        begin
-          temp := tasks[j];
-          tasks[j] := tasks[j-1];
-          tasks[j-1] := temp;
-        end;
-      end;
+      SetLength(sortedTasks, Length(sortedTasks) + 1);
+      sortedTasks[High(sortedTasks)] := tempTasks[j];
     end;
   end;
+
+  // Next: green expeditions
+  for j := 0 to High(tempTasks) do
+  begin
+    is_grn := (tempTasks[j].part_type = Part_Raw_Green) or (tempTasks[j].part_type = Part_Base_Green) or (tempTasks[j].part_type = Part_Lid_Green);
+    if (tempTasks[j].task_type = Type_Expedition) and is_grn then
+    begin
+      SetLength(sortedTasks, Length(sortedTasks) + 1);
+      sortedTasks[High(sortedTasks)] := tempTasks[j];
+    end;
+  end;
+
+  // All other expeditions afterwards
+  for j := 0 to High(tempTasks) do
+  begin
+    is_grn := (tempTasks[j].part_type = Part_Raw_Green) or (tempTasks[j].part_type = Part_Base_Green) or (tempTasks[j].part_type = Part_Lid_Green);
+    if (tempTasks[j].task_type = Type_Expedition) and not is_grn then
+    begin
+      SetLength(sortedTasks, Length(sortedTasks) + 1);
+      sortedTasks[High(sortedTasks)] := tempTasks[j];
+    end;
+  end;
+
+  // Transfer everything into the original array
+  tasks := sortedTasks;
 end;
 
 
@@ -294,11 +314,10 @@ begin
     ShowMessage('No orders added yet!');
     Exit;
   end;
-
+ // idx_Task_Executing := 0;
  Total_Cost := 0.0;
  Active_Grey_Parts := 0;
  AR_Locked := False;
-
 
  SetLength(Cell1_Times, 0);
 SetLength(Cell2_Times, 0);
@@ -590,7 +609,8 @@ var
   i: integer;
   Finished: Boolean;
   j : integer;
-
+  time_spent : double;
+  HasPendingProduction: Boolean;
 begin
     Finished := True;
 
@@ -690,13 +710,13 @@ begin
         // Getting a Position from the Warehouse
         Stage_GetPart :
         begin
-          if (shopfloor.AR_free) (*and not AR_Locked *)and (shopfloor.AR_Out_Part = 0) then  //AR is free
+          if (shopfloor.AR_free) and not AR_Locked and (shopfloor.AR_Out_Part = 0) then  //AR is free
           begin
             Part_Position_AR := GET_AR_Position(Part_Type, WAREHOUSE_Parts);
 
             if( Part_Position_AR > 0 ) then
             begin
-               AR_Locked := True;
+              AR_Locked := True;
               Memo_Log.Append('Looking for part ' + IntToStr(Part_Type) + ' -> found at position ' + IntToStr(Part_Position_AR));
                current_operation :=  Stage_Unload;
             end
@@ -774,7 +794,7 @@ begin
         // Getting a Position from the Warehouse
         Stage_GetPart :
         begin
-          if (shopfloor.AR_free) (*and not AR_Locked *) and (shopfloor.AR_Out_Part = 0) then
+          if (shopfloor.AR_free) and not AR_Locked and (shopfloor.AR_Out_Part = 0) then
           begin
             Memo_Log.Append('Looking for raw part at position ' + IntToStr(Part_Position_AR));
             if Part_Destination = 1 then
@@ -784,7 +804,7 @@ begin
 
             if( Part_Position_AR > 0 ) then
             begin
-               AR_Locked := True;
+              AR_Locked := True;
                current_operation :=  Stage_Unload;
             end
             else
@@ -827,7 +847,7 @@ begin
             Memo_Log.Append('Production result: ' + IntToStr(r) + ' | Destination: ' + IntToStr(Part_Destination) + ' | Part type: ' + IntToStr(part_type));
 
             if (r = 1) then
-               AR_Locked := False;
+              AR_Locked := False;
               current_operation := Stage_Wait;
           end;
         end;
@@ -931,15 +951,14 @@ begin
         end;
 
          Stage_Get_Free_Position:
-         begin
-         if (shopfloor.AR_free) and (not AR_Locked) (shopfloor.AR_Out_Part = 0) then
-         begin
-
+        begin
+          if not AR_Locked and shopfloor.AR_free and (shopfloor.AR_Out_Part = 0) then
+          begin
             Part_Position_AR := GET_AR_Free_Position(WAREHOUSE_Parts);
 
             if (Part_Position_AR > 0) then
             begin
-             AR_Locked := True;  // LOCK IMMEDIATELY
+              AR_Locked := True;  // LOCK IMMEDIATELY
               // Reserve the position in memory right away so the next task sees it as taken
               SET_AR_Position(Part_Position_AR, Part_Type, WAREHOUSE_Parts);
               Memo_Log.Append('Free warehouse position found: ' + IntToStr(Part_Position_AR));
@@ -955,8 +974,8 @@ begin
             end
             else
               Memo_Log.Append('Warehouse is full!');
-         end;
-         end;
+          end;
+        end;
 
          Stage_Inbound :
         begin
@@ -971,7 +990,7 @@ begin
 
          Stage_GetPosition:
         begin
-           if (shopfloor.AR_free) and (shopfloor.AR_In_Part = Part_Type) then
+           if (shopfloor.AR_free) (*and not AR_Locked *) and (shopfloor.AR_In_Part = Part_Type) then
            begin
               AR_Locked := True;
               current_operation := Stage_Load;
@@ -1001,7 +1020,7 @@ begin
            SET_AR_Position(Part_Position_AR, Part_Type, WAREHOUSE_Parts);
            inc(Monitoring_Received[Part_Type]);
            Memo_Log.Append('Inbound complete. Part ' + IntToStr(Part_Type) + ' stored at warehouse position ' + IntToStr(Part_Position_AR));
-          AR_Locked := False;
+           AR_Locked := False;
            current_operation := Stage_Finished;
            if Part_Type = Part_Raw_Green then
              Total_Cost := Total_Cost + 4.0
