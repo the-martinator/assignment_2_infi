@@ -1,7 +1,7 @@
 object FormDispatcher: TFormDispatcher
-  Left = 414
+  Left = 585
   Height = 989
-  Top = 90
+  Top = 228
   Width = 1148
   Caption = 'Dispatcher'
   ClientHeight = 989
