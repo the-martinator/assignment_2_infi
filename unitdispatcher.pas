@@ -235,7 +235,7 @@ var
 begin
   SetLength(tasks, 0);
 
-  // 1. Desdobrar as ordens no Array pela ordem EXATA em que as inseriste
+  // Unfold tasks into the array
   for idx_order := 0 to Length(orders) - 1 do
   begin
     with current_task do
@@ -262,9 +262,7 @@ begin
     end;
   end;
 
-  // 2. Ordenação Inteligente (A prioridade verde)
-  // Faz as Expedições Verdes "subirem" na lista, passando à frente apenas das outras expedições.
-  // Produções, Inbounds e Reposições mantêm os seus lugares originais!
+  // Production and Inbound keep their places. if a green expedition comes after a non-green, it swaps.
   for i := 0 to High(tasks) do
   begin
     for j := High(tasks) downto 1 do
@@ -272,7 +270,6 @@ begin
       is_green_j := (tasks[j].part_type = Part_Raw_Green) or (tasks[j].part_type = Part_Base_Green) or (tasks[j].part_type = Part_Lid_Green);
       is_green_above := (tasks[j-1].part_type = Part_Raw_Green) or (tasks[j-1].part_type = Part_Base_Green) or (tasks[j-1].part_type = Part_Lid_Green);
 
-      // Se a tarefa atual for Expedição Verde e a tarefa de cima for uma Expedição NÃO-Verde, trocam de lugar.
       if (tasks[j].task_type = Type_Expedition) and is_green_j then
       begin
         if (tasks[j-1].task_type = Type_Expedition) and not is_green_above then
@@ -593,8 +590,7 @@ var
   i: integer;
   Finished: Boolean;
   j : integer;
-  time_spent : double;
-  HasPendingProduction: Boolean;
+
 begin
     Finished := True;
 
@@ -935,9 +931,8 @@ begin
         end;
 
          Stage_Get_Free_Position:
-        begin
-          if not AR_Locked and shopfloor.AR_free and (shopfloor.AR_Out_Part = 0) then
-          begin
+         begin
+
             Part_Position_AR := GET_AR_Free_Position(WAREHOUSE_Parts);
 
             if (Part_Position_AR > 0) then
@@ -958,7 +953,6 @@ begin
             end
             else
               Memo_Log.Append('Warehouse is full!');
-          end;
         end;
 
          Stage_Inbound :
@@ -974,7 +968,7 @@ begin
 
          Stage_GetPosition:
         begin
-           if (shopfloor.AR_free) (*and not AR_Locked *) and (shopfloor.AR_In_Part = Part_Type) then
+           if (shopfloor.AR_free) and (shopfloor.AR_In_Part = Part_Type) then
            begin
               AR_Locked := True;
               current_operation := Stage_Load;
