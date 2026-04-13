@@ -228,16 +228,14 @@ end;
 procedure SimpleScheduler(var orders: TArray_Production_Order; var tasks: TArray_Task);
 var
   current_task : TTask;
-  idx_order, j : integer;
+  idx_order, i, j : integer;
   numb_same_task : integer;
-  tempTasks : TArray_Task;
-  sortedTasks : TArray_Task;
-  is_grn : boolean;
+  is_green_j, is_green_above : boolean;
+  temp : TTask;
 begin
-  SetLength(tempTasks, 0);
-  SetLength(sortedTasks, 0);
+  SetLength(tasks, 0);
 
-  // Unfold orders into a temporary array
+  // 1. Desdobrar as ordens no Array pela ordem EXATA em que as inseriste
   for idx_order := 0 to Length(orders) - 1 do
   begin
     with current_task do
@@ -258,48 +256,34 @@ begin
 
       for numb_same_task := 0 to orders[idx_order].part_numbers - 1 do
       begin
-        SetLength(tempTasks, Length(tempTasks) + 1);
-        tempTasks[High(tempTasks)] := current_task;
+        SetLength(tasks, Length(tasks) + 1);
+        tasks[High(tasks)] := current_task;
       end;
     end;
   end;
 
-  // set inbound and production orders before expeditions, with green expeditions having priority
-
-  // Production and Inbound in the order they were input
-  for j := 0 to High(tempTasks) do
+  // 2. Ordenação Inteligente (A prioridade verde)
+  // Faz as Expedições Verdes "subirem" na lista, passando à frente apenas das outras expedições.
+  // Produções, Inbounds e Reposições mantêm os seus lugares originais!
+  for i := 0 to High(tasks) do
   begin
-    if tempTasks[j].task_type <> Type_Expedition then
+    for j := High(tasks) downto 1 do
     begin
-      SetLength(sortedTasks, Length(sortedTasks) + 1);
-      sortedTasks[High(sortedTasks)] := tempTasks[j];
+      is_green_j := (tasks[j].part_type = Part_Raw_Green) or (tasks[j].part_type = Part_Base_Green) or (tasks[j].part_type = Part_Lid_Green);
+      is_green_above := (tasks[j-1].part_type = Part_Raw_Green) or (tasks[j-1].part_type = Part_Base_Green) or (tasks[j-1].part_type = Part_Lid_Green);
+
+      // Se a tarefa atual for Expedição Verde e a tarefa de cima for uma Expedição NÃO-Verde, trocam de lugar.
+      if (tasks[j].task_type = Type_Expedition) and is_green_j then
+      begin
+        if (tasks[j-1].task_type = Type_Expedition) and not is_green_above then
+        begin
+          temp := tasks[j];
+          tasks[j] := tasks[j-1];
+          tasks[j-1] := temp;
+        end;
+      end;
     end;
   end;
-
-  // Next: green expeditions
-  for j := 0 to High(tempTasks) do
-  begin
-    is_grn := (tempTasks[j].part_type = Part_Raw_Green) or (tempTasks[j].part_type = Part_Base_Green) or (tempTasks[j].part_type = Part_Lid_Green);
-    if (tempTasks[j].task_type = Type_Expedition) and is_grn then
-    begin
-      SetLength(sortedTasks, Length(sortedTasks) + 1);
-      sortedTasks[High(sortedTasks)] := tempTasks[j];
-    end;
-  end;
-
-  // All other expeditions afterwards
-  for j := 0 to High(tempTasks) do
-  begin
-    is_grn := (tempTasks[j].part_type = Part_Raw_Green) or (tempTasks[j].part_type = Part_Base_Green) or (tempTasks[j].part_type = Part_Lid_Green);
-    if (tempTasks[j].task_type = Type_Expedition) and not is_grn then
-    begin
-      SetLength(sortedTasks, Length(sortedTasks) + 1);
-      sortedTasks[High(sortedTasks)] := tempTasks[j];
-    end;
-  end;
-
-  // Transfer everything into the original array
-  tasks := sortedTasks;
 end;
 
 
