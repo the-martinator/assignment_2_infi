@@ -172,7 +172,6 @@ var
   Total_Defect_Cost : Double = 0.0;
   Active_Grey_Parts : integer = 0;
   AR_Locked : boolean = False; //locks the use of the warehouse
-  Conveyor_Busy_until : QWord = 0;  //prevents loading on the main conveyor belt while it's busy
 
   Cell1_Times : array of double;
   Cell2_Times : array of double;
@@ -235,7 +234,7 @@ var
 begin
   SetLength(tasks, 0);
 
-  // 1. Desdobrar as ordens no Array pela ordem EXATA em que as inseriste
+  // Unfold tasks into array
   for idx_order := 0 to Length(orders) - 1 do
   begin
     with current_task do
@@ -262,9 +261,7 @@ begin
     end;
   end;
 
-  // 2. Ordenação Inteligente (A prioridade verde)
-  // Faz as Expedições Verdes "subirem" na lista, passando à frente apenas das outras expedições.
-  // Produções, Inbounds e Reposições mantêm os seus lugares originais!
+  //Green expedition tasks get priority over other expedition tasks, but now over produciton or inbounds!
   for i := 0 to High(tasks) do
   begin
     for j := High(tasks) downto 1 do
@@ -272,7 +269,6 @@ begin
       is_green_j := (tasks[j].part_type = Part_Raw_Green) or (tasks[j].part_type = Part_Base_Green) or (tasks[j].part_type = Part_Lid_Green);
       is_green_above := (tasks[j-1].part_type = Part_Raw_Green) or (tasks[j-1].part_type = Part_Base_Green) or (tasks[j-1].part_type = Part_Lid_Green);
 
-      // Se a tarefa atual for Expedição Verde e a tarefa de cima for uma Expedição NÃO-Verde, trocam de lugar.
       if (tasks[j].task_type = Type_Expedition) and is_green_j then
       begin
         if (tasks[j-1].task_type = Type_Expedition) and not is_green_above then
@@ -298,7 +294,7 @@ begin
     ShowMessage('No orders added yet!');
     Exit;
   end;
- // idx_Task_Executing := 0;
+
  Total_Cost := 0.0;
  Active_Grey_Parts := 0;
  AR_Locked := False;
@@ -593,8 +589,7 @@ var
   i: integer;
   Finished: Boolean;
   j : integer;
-  time_spent : double;
-  HasPendingProduction: Boolean;
+
 begin
     Finished := True;
 
